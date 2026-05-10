@@ -430,3 +430,83 @@
   margin-top: 2px;
   white-space: normal;
 }
+
+.tradingview-multi-symbol-quick-insert-modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal.tradingview-multi-symbol-quick-insert-modal,
+.tradingview-multi-symbol-quick-insert-modal .modal {
+  width: min(92vw, 760px);
+}
+
+.tradingview-multi-symbol-selection {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m, 8px);
+  padding: 10px;
+}
+
+.tradingview-multi-symbol-empty,
+.tradingview-multi-symbol-count {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+}
+
+.tradingview-multi-symbol-count {
+  margin-bottom: 8px;
+}
+
+.tradingview-multi-symbol-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tradingview-multi-symbol-chip {
+  align-items: center;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 6px 4px 10px;
+}
+
+.tradingview-multi-symbol-chip-symbol {
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+}
+
+.tradingview-multi-symbol-chip-title {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tradingview-multi-symbol-remove {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  height: 22px;
+  justify-content: center;
+  min-width: 22px;
+  padding: 0;
+  width: 22px;
+}
+
+.tradingview-multi-symbol-lookup .tradingview-symbol-lookup-results {
+  max-height: min(42vh, 360px);
+}
+
+.tradingview-multi-symbol-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}

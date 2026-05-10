@@ -36,7 +36,7 @@ autosize: true
 
 ## Commands
 
-- **TradingView Widgets: Quick Insert Widget** — choose a common widget, look up a symbol, and insert the code block immediately.
+- **TradingView Widgets: Quick Insert Widget** — choose a common widget, look up symbols, and insert the code block immediately. Widgets that accept multiple tickers let you add several symbols before inserting.
 - **TradingView Widgets: Widget Wizard** — open the full guided widget builder.
 
 ## Wizard
