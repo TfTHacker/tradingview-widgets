@@ -30,31 +30,32 @@ interface TradingViewSymbolSearchResponseItem {
   "base-currency-logoid"?: unknown;
 }
 
-export class SymbolLookupModal extends Modal {
-  private inputEl: HTMLInputElement | null = null;
-  private resultsEl: HTMLElement | null = null;
-  private statusEl: HTMLElement | null = null;
+export interface SymbolLookupFormOptions {
+  placeholder?: string;
+  initialQuery?: string;
+}
+
+export class SymbolLookupForm {
+  private inputEl: HTMLInputElement;
+  private resultsEl: HTMLElement;
+  private statusEl: HTMLElement;
   private debounceTimer: number | null = null;
   private requestId = 0;
 
-  constructor(app: App, private readonly onChoose: (result: TradingViewSymbolResult) => void) {
-    super(app);
-  }
-
-  onOpen(): void {
-    this.modalEl.addClass("tradingview-symbol-lookup-modal");
-    const { contentEl } = this;
-    contentEl.empty();
-    contentEl.createEl("h2", { text: "Lookup TradingView Symbol" });
-    contentEl.createEl("p", {
-      cls: "tradingview-symbol-lookup-desc",
-      text: "Search TradingView symbols, then choose one to insert into the widget wizard.",
-    });
-
-    this.inputEl = contentEl.createEl("input", {
+  constructor(
+    private readonly app: App,
+    private readonly containerEl: HTMLElement,
+    private readonly onChoose: (result: TradingViewSymbolResult) => void,
+    private readonly options: SymbolLookupFormOptions = {},
+  ) {
+    this.inputEl = this.containerEl.createEl("input", {
       cls: "tradingview-symbol-lookup-input",
-      attr: { type: "search", placeholder: "Search symbol or company, e.g. MSFT, Tesla, BTCUSD" },
+      attr: {
+        type: "search",
+        placeholder: options.placeholder ?? "Search symbol or company, e.g. MSFT, Tesla, BTCUSD",
+      },
     });
+    this.inputEl.value = options.initialQuery ?? "";
     this.inputEl.addEventListener("input", () => this.scheduleSearch());
     this.inputEl.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
@@ -63,16 +64,22 @@ export class SymbolLookupModal extends Modal {
       }
     });
 
-    this.statusEl = contentEl.createDiv({ cls: "tradingview-symbol-lookup-status", text: "Type at least 2 characters to search." });
-    this.resultsEl = contentEl.createDiv({ cls: "tradingview-symbol-lookup-results" });
+    this.statusEl = this.containerEl.createDiv({ cls: "tradingview-symbol-lookup-status", text: "Type at least 2 characters to search." });
+    this.resultsEl = this.containerEl.createDiv({ cls: "tradingview-symbol-lookup-results" });
 
-    window.setTimeout(() => this.inputEl?.focus(), 50);
+    if (this.inputEl.value.trim().length >= 2) {
+      void this.searchNow();
+    }
   }
 
-  onClose(): void {
+  focus(): void {
+    this.inputEl.focus();
+    this.inputEl.select();
+  }
+
+  destroy(): void {
     if (this.debounceTimer != null) window.clearTimeout(this.debounceTimer);
     this.debounceTimer = null;
-    this.contentEl.empty();
   }
 
   private scheduleSearch(): void {
@@ -83,7 +90,7 @@ export class SymbolLookupModal extends Modal {
   }
 
   private async searchNow(): Promise<void> {
-    const query = this.inputEl?.value.trim() ?? "";
+    const query = this.inputEl.value.trim();
     const currentRequestId = ++this.requestId;
 
     if (query.length < 2) {
@@ -108,7 +115,6 @@ export class SymbolLookupModal extends Modal {
   }
 
   private renderResults(results: TradingViewSymbolResult[]): void {
-    if (!this.resultsEl) return;
     this.resultsEl.empty();
 
     for (const result of results) {
@@ -120,10 +126,7 @@ export class SymbolLookupModal extends Modal {
       primary.createSpan({ cls: "tradingview-symbol-lookup-result-type", text: result.type || "symbol" });
       details.createDiv({ cls: "tradingview-symbol-lookup-result-desc", text: result.description || result.symbol });
       details.createDiv({ cls: "tradingview-symbol-lookup-result-meta", text: [result.exchange, result.country].filter(Boolean).join(" · ") });
-      item.addEventListener("click", () => {
-        this.onChoose(result);
-        this.close();
-      });
+      item.addEventListener("click", () => this.onChoose(result));
     }
   }
 
@@ -150,7 +153,39 @@ export class SymbolLookupModal extends Modal {
   }
 
   private setStatus(message: string): void {
-    this.statusEl?.setText(message);
+    this.statusEl.setText(message);
+  }
+}
+
+export class SymbolLookupModal extends Modal {
+  private form: SymbolLookupForm | null = null;
+
+  constructor(app: App, private readonly onChoose: (result: TradingViewSymbolResult) => void, private readonly options: SymbolLookupFormOptions = {}) {
+    super(app);
+  }
+
+  onOpen(): void {
+    this.modalEl.addClass("tradingview-symbol-lookup-modal");
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h2", { text: "Lookup TradingView Symbol" });
+    contentEl.createEl("p", {
+      cls: "tradingview-symbol-lookup-desc",
+      text: "Search TradingView symbols, then choose one to insert.",
+    });
+
+    this.form = new SymbolLookupForm(this.app, contentEl, (result) => {
+      this.onChoose(result);
+      this.close();
+    }, this.options);
+
+    window.setTimeout(() => this.form?.focus(), 50);
+  }
+
+  onClose(): void {
+    this.form?.destroy();
+    this.form = null;
+    this.contentEl.empty();
   }
 }
 

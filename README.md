@@ -34,6 +34,11 @@ autosize: true
 - `top-stories`
 - `economic-calendar`
 
+## Commands
+
+- **TradingView Widgets: Quick Insert Widget** — choose a common widget, look up a symbol, and insert the code block immediately.
+- **TradingView Widgets: Widget Wizard** — open the full guided widget builder.
+
 ## Wizard
 
 Use the command palette command **TradingView Widgets: Widget Wizard** to open a guided widget builder. It lets you choose the widget type, look up TradingView symbols, configure symbol(s), interval, theme, height, width, locale, timezone, attribution, lazy loading, widget-specific TradingView options, and optional advanced YAML, then copies or inserts the generated code block.

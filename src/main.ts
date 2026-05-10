@@ -2,6 +2,7 @@ import { Plugin } from "obsidian";
 import { LazyWidgetLoader } from "./lazyLoad";
 import { TradingViewBlockRenderer } from "./renderer";
 import { DEFAULT_SETTINGS, type TradingViewPluginSettings } from "./settings";
+import { TradingViewQuickInsertModal } from "./quickInsert";
 import { TradingViewSettingTab } from "./settingsTab";
 import { startThemeObserver } from "./theme";
 import { TradingViewWizardModal } from "./wizard";
@@ -17,6 +18,14 @@ export default class TradingViewWidgetsPlugin extends Plugin {
 
     this.registerMarkdownCodeBlockProcessor("tradingview", (source, el) => {
       this.renderer.render(source, el);
+    });
+
+    this.addCommand({
+      id: "quick-insert-tradingview-widget",
+      name: "Quick Insert Widget",
+      callback: () => {
+        new TradingViewQuickInsertModal(this.app, this).open();
+      },
     });
 
     this.addCommand({

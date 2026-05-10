@@ -412,3 +412,16 @@
   font-size: var(--font-ui-smaller);
   margin-top: 3px;
 }
+
+.tradingview-quick-insert-suggestion-title {
+  color: var(--text-normal);
+  font-weight: var(--font-semibold);
+}
+
+.tradingview-quick-insert-suggestion-desc {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.35;
+  margin-top: 2px;
+  white-space: normal;
+}
