@@ -101,6 +101,7 @@ export class TradingViewWizardModal extends Modal {
       .setDesc("Choose the TradingView widget to embed.")
       .addDropdown((dropdown) => {
         for (const widget of WIDGETS) dropdown.addOption(widget.id, widget.displayName);
+        decorateDropdown(dropdown.selectEl);
         dropdown
           .setValue(this.state.widget)
           .onChange((value) => {
@@ -148,6 +149,7 @@ export class TradingViewWizardModal extends Modal {
         .setDesc("Chart interval. D = daily, W = weekly, M = monthly.")
         .addDropdown((dropdown) => {
           for (const interval of INTERVALS) dropdown.addOption(interval, interval);
+          decorateDropdown(dropdown.selectEl);
           dropdown
             .setValue(this.state.interval)
             .onChange((value) => {
@@ -162,6 +164,7 @@ export class TradingViewWizardModal extends Modal {
       .setDesc("auto follows Obsidian's current light/dark theme.")
       .addDropdown((dropdown) => {
         for (const theme of THEMES) dropdown.addOption(theme, theme);
+        decorateDropdown(dropdown.selectEl);
         dropdown
           .setValue(this.state.theme)
           .onChange((value) => {
@@ -286,6 +289,7 @@ export class TradingViewWizardModal extends Modal {
         for (const option of ensureChoice(String(this.state.extraOptions[key] ?? defaultValue), OPTION_CHOICES[key])) {
           dropdown.addOption(option, option);
         }
+        decorateDropdown(dropdown.selectEl);
         dropdown
           .setValue(String(this.state.extraOptions[key] ?? defaultValue))
           .onChange((value) => {
@@ -437,6 +441,14 @@ export class TradingViewWizardModal extends Modal {
     new Notice("TradingView widget code block inserted");
     this.close();
   }
+}
+
+function decorateDropdown(selectEl: HTMLSelectElement): void {
+  const controlEl = selectEl.parentElement;
+  if (!controlEl || controlEl.querySelector(".tradingview-widget-wizard-dropdown-chevron")) return;
+
+  controlEl.addClass("tradingview-widget-wizard-dropdown-control");
+  controlEl.createSpan({ cls: "tradingview-widget-wizard-dropdown-chevron", text: "▾" });
 }
 
 function hasSetting(definition: TradingViewWidgetDefinition, key: string): boolean {
