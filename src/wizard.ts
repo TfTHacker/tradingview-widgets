@@ -1,58 +1,22 @@
 import { App, MarkdownView, Modal, Notice, Setting } from "obsidian";
-import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type TradingViewWidgetsPlugin from "./main";
 import { WIDGETS, getWidgetDefinition, type TradingViewWidgetDefinition } from "./widgets";
-
-interface WizardState {
-  widget: string;
-  symbol: string;
-  symbolsText: string;
-  interval: string;
-  theme: string;
-  height: string;
-  width: string;
-  locale: string;
-  timezone: string;
-  showAttribution: boolean;
-  lazyLoad: boolean;
-  extraOptions: Record<string, unknown>;
-  extraOptionText: Record<string, string>;
-  advancedYaml: string;
-}
-
-const INTERVALS = ["1", "5", "15", "30", "60", "240", "D", "W", "M"];
-const THEMES = ["auto", "light", "dark"];
-const BASIC_SETTING_KEYS = new Set(["symbol", "symbols", "interval", "locale", "timezone", "theme", "colorTheme", "width", "height"]);
-const OPTION_CHOICES: Record<string, string[]> = {
-  blockColor: ["change", "Perf.W", "Perf.1M", "Perf.3M", "Perf.6M", "Perf.YTD", "Perf.Y", "24h_close_change|5"],
-  blockSize: ["market_cap_basic", "market_cap_calc", "volume", "Value.Traded", "AUM"],
-  changeMode: ["price-and-percent", "price-only", "percent-only"],
-  chartType: ["area", "line", "candlesticks", "bars"],
-  dataSource: ["SPX500", "AllUSEtf", "Crypto"],
-  dateRange: ["1D", "5D", "1M", "3M", "6M", "12M", "YTD", "60M", "ALL"],
-  defaultColumn: ["overview", "performance", "oscillators", "moving_averages"],
-  defaultScreen: ["general", "most_capitalized", "volume_leaders", "top_gainers", "top_losers"],
-  displayMode: ["regular", "compact", "adaptive", "single", "multiple"],
-  feedMode: ["all_symbols", "market", "symbol"],
-  grouping: ["sector", "industry", "asset_class", "no_group"],
-  importanceFilter: ["-1,0,1", "0,1", "1"],
-  market: ["america", "forex", "crypto", "indices", "futures", "cfd"],
-  scaleMode: ["Normal", "Percentage", "Logarithmic"],
-  scalePosition: ["right", "left", "no"],
-  valuesTracking: ["0", "1"],
-};
+import { buildTradingViewCodeBlock, hasAdvancedYamlError, hasSetting } from "./wizard/codeblockBuilder";
+import { INTERVALS, THEMES } from "./wizard/optionMetadata";
+import { renderExtraOptionFields } from "./wizard/optionControls";
+import { createWizardSections } from "./wizard/sections";
+import { createInitialWizardState, type WizardState } from "./wizard/state";
+import { decorateDropdown } from "./wizard/uiDecorators";
 
 export class TradingViewWizardModal extends Modal {
   private plugin: TradingViewWidgetsPlugin;
   private state: WizardState;
-  private formEl: HTMLElement | null = null;
-  private previewEl: HTMLTextAreaElement | null = null;
 
   constructor(app: App, plugin: TradingViewWidgetsPlugin) {
     super(app);
     this.plugin = plugin;
     const definition = getWidgetDefinition(plugin.settings.defaultWidget) ?? WIDGETS[0];
-    this.state = this.createInitialState(definition);
+    this.state = createInitialWizardState(definition, plugin.settings);
   }
 
   onOpen(): void {
@@ -62,8 +26,6 @@ export class TradingViewWizardModal extends Modal {
 
   onClose(): void {
     this.contentEl.empty();
-    this.formEl = null;
-    this.previewEl = null;
   }
 
   private render(): void {
@@ -71,8 +33,8 @@ export class TradingViewWizardModal extends Modal {
     contentEl.empty();
     contentEl.createEl("h2", { text: "TradingView Widget Wizard" });
 
-    this.formEl = contentEl.createDiv({ cls: "tradingview-widget-wizard-form" });
-    this.renderForm(this.formEl);
+    const formEl = contentEl.createDiv({ cls: "tradingview-widget-wizard-form" });
+    this.renderForm(formEl);
 
     const actions = contentEl.createDiv({ cls: "tradingview-widget-wizard-actions" });
     actions.createEl("button", { text: "Insert into note", cls: "mod-cta" }, (button) => {
@@ -84,19 +46,14 @@ export class TradingViewWizardModal extends Modal {
     actions.createEl("button", { text: "Close" }, (button) => {
       button.addEventListener("click", () => this.close());
     });
-
-    this.updatePreview();
   }
 
   private renderForm(containerEl: HTMLElement): void {
     const definition = this.currentDefinition();
-    const basicSection = createStaticWizardSection(containerEl, "Basic setup", "Choose the widget and primary TradingView symbol settings.");
-    const sizeSection = createStaticWizardSection(containerEl, "Size & theme", "Control the widget dimensions and visual theme.");
-    const behaviorSection = createWizardSection(containerEl, "Behavior", "Common runtime behavior options.", false);
-    const appearanceSection = createWizardSection(containerEl, "Appearance", "Widget-specific visual display options.", false);
-    const advancedSection = createWizardSection(containerEl, "Advanced", "Locale, timezone, raw YAML, and lower-level TradingView settings.", false);
+    const sections = createWizardSections(containerEl);
+    const onChange = () => this.handleStateChanged();
 
-    new Setting(basicSection)
+    new Setting(sections.basicSection)
       .setName("Widget type")
       .setDesc("Choose the TradingView widget to embed.")
       .addDropdown((dropdown) => {
@@ -107,7 +64,7 @@ export class TradingViewWizardModal extends Modal {
           .onChange((value) => {
             const next = getWidgetDefinition(value) ?? WIDGETS[0];
             this.state = {
-              ...this.createInitialState(next),
+              ...createInitialWizardState(next, this.plugin.settings),
               theme: this.state.theme,
               width: this.state.width,
               locale: this.state.locale,
@@ -118,7 +75,7 @@ export class TradingViewWizardModal extends Modal {
       });
 
     if (hasSetting(definition, "symbol")) {
-      new Setting(basicSection)
+      new Setting(sections.basicSection)
         .setName("Symbol")
         .setDesc("TradingView symbol, e.g. NASDAQ:AAPL, NASDAQ:NVDA, FX:EURUSD, BITSTAMP:BTCUSD.")
         .addText((text) => text
@@ -126,12 +83,12 @@ export class TradingViewWizardModal extends Modal {
           .setValue(this.state.symbol)
           .onChange((value) => {
             this.state.symbol = value.trim();
-            this.updatePreview();
+            onChange();
           }));
     }
 
     if (hasSetting(definition, "symbols")) {
-      new Setting(basicSection)
+      new Setting(sections.basicSection)
         .setName("Symbols")
         .setDesc("One per line. Use SYMBOL or SYMBOL | Title. Example: NASDAQ:AAPL | Apple")
         .addTextArea((textarea) => textarea
@@ -139,12 +96,12 @@ export class TradingViewWizardModal extends Modal {
           .setValue(this.state.symbolsText)
           .onChange((value) => {
             this.state.symbolsText = value;
-            this.updatePreview();
+            onChange();
           }));
     }
 
     if (hasSetting(definition, "interval")) {
-      new Setting(basicSection)
+      new Setting(sections.basicSection)
         .setName("Interval")
         .setDesc("Chart interval. D = daily, W = weekly, M = monthly.")
         .addDropdown((dropdown) => {
@@ -154,12 +111,12 @@ export class TradingViewWizardModal extends Modal {
             .setValue(this.state.interval)
             .onChange((value) => {
               this.state.interval = value;
-              this.updatePreview();
+              onChange();
             });
         });
     }
 
-    new Setting(sizeSection)
+    new Setting(sections.sizeSection)
       .setName("Theme")
       .setDesc("auto follows Obsidian's current light/dark theme.")
       .addDropdown((dropdown) => {
@@ -169,11 +126,11 @@ export class TradingViewWizardModal extends Modal {
           .setValue(this.state.theme)
           .onChange((value) => {
             this.state.theme = value;
-            this.updatePreview();
+            onChange();
           });
       });
 
-    new Setting(sizeSection)
+    new Setting(sections.sizeSection)
       .setName("Height (px)")
       .setDesc("Widget height in pixels. This is written as the block's height option.")
       .addText((text) => text
@@ -181,10 +138,10 @@ export class TradingViewWizardModal extends Modal {
         .setValue(this.state.height)
         .onChange((value) => {
           this.state.height = value.trim();
-          this.updatePreview();
+          onChange();
         }));
 
-    new Setting(sizeSection)
+    new Setting(sections.sizeSection)
       .setName("Width")
       .setDesc("Widget width. Use 100% for full note width, or values like 600px, 80%, 50vw, 40rem.")
       .addText((text) => text
@@ -192,20 +149,20 @@ export class TradingViewWizardModal extends Modal {
         .setValue(this.state.width)
         .onChange((value) => {
           this.state.width = value.trim();
-          this.updatePreview();
+          onChange();
         }));
 
-    new Setting(behaviorSection)
+    new Setting(sections.behaviorSection)
       .setName("Lazy load widget")
       .setDesc("Load this widget only when it approaches the viewport.")
       .addToggle((toggle) => toggle
         .setValue(this.state.lazyLoad)
         .onChange((value) => {
           this.state.lazyLoad = value;
-          this.updatePreview();
+          onChange();
         }));
 
-    new Setting(advancedSection)
+    new Setting(sections.advancedSection)
       .setName("Locale")
       .setDesc("TradingView locale, e.g. en, es, de_DE.")
       .addText((text) => text
@@ -213,11 +170,11 @@ export class TradingViewWizardModal extends Modal {
         .setValue(this.state.locale)
         .onChange((value) => {
           this.state.locale = value.trim();
-          this.updatePreview();
+          onChange();
         }));
 
     if (hasSetting(definition, "timezone")) {
-      new Setting(advancedSection)
+      new Setting(sections.advancedSection)
         .setName("Timezone")
         .setDesc("Used by chart widgets.")
         .addText((text) => text
@@ -225,23 +182,23 @@ export class TradingViewWizardModal extends Modal {
           .setValue(this.state.timezone)
           .onChange((value) => {
             this.state.timezone = value.trim();
-            this.updatePreview();
+            onChange();
           }));
     }
 
-    new Setting(advancedSection)
+    new Setting(sections.advancedSection)
       .setName("Show TradingView attribution")
       .setDesc("Adds the standard TradingView attribution line below the widget.")
       .addToggle((toggle) => toggle
         .setValue(this.state.showAttribution)
         .onChange((value) => {
           this.state.showAttribution = value;
-          this.updatePreview();
+          onChange();
         }));
 
-    this.renderExtraOptionFields({ behaviorSection, appearanceSection, advancedSection }, definition);
+    renderExtraOptionFields({ sections, definition, state: this.state, onChange });
 
-    new Setting(advancedSection)
+    new Setting(sections.advancedSection)
       .setName("Advanced YAML options")
       .setDesc("Optional TradingView settings merged into the code block. Use this for widget-specific options not exposed above.")
       .addTextArea((textarea) => textarea
@@ -249,103 +206,8 @@ export class TradingViewWizardModal extends Modal {
         .setValue(this.state.advancedYaml)
         .onChange((value) => {
           this.state.advancedYaml = value;
-          this.updatePreview();
+          onChange();
         }));
-  }
-
-  private renderExtraOptionFields(sections: { behaviorSection: HTMLElement; appearanceSection: HTMLElement; advancedSection: HTMLElement }, definition: TradingViewWidgetDefinition): void {
-    const keys = getExtraOptionKeys(definition);
-    if (!keys.length) return;
-
-    const appearanceKeys = keys.filter((key) => getOptionSection(key) === "appearance");
-    const behaviorKeys = keys.filter((key) => getOptionSection(key) === "behavior");
-    const advancedKeys = keys.filter((key) => getOptionSection(key) === "advanced");
-
-    for (const key of appearanceKeys) this.renderExtraOptionField(sections.appearanceSection, definition, key);
-
-    for (const key of behaviorKeys) this.renderExtraOptionField(sections.behaviorSection, definition, key);
-    for (const key of advancedKeys) this.renderExtraOptionField(sections.advancedSection, definition, key);
-  }
-
-  private renderExtraOptionField(containerEl: HTMLElement, definition: TradingViewWidgetDefinition, key: string): void {
-    const defaultValue = definition.defaultSettings[key];
-    const label = humanizeOptionName(key);
-    const setting = new Setting(containerEl)
-      .setName(label)
-      .setDesc(`TradingView option: ${key}`);
-
-    if (typeof defaultValue === "boolean") {
-      setting.addToggle((toggle) => toggle
-        .setValue(Boolean(this.state.extraOptions[key]))
-        .onChange((value) => {
-          this.state.extraOptions[key] = value;
-          this.updatePreview();
-        }));
-      return;
-    }
-
-    if (typeof defaultValue === "string" && OPTION_CHOICES[key]) {
-      setting.addDropdown((dropdown) => {
-        for (const option of ensureChoice(String(this.state.extraOptions[key] ?? defaultValue), OPTION_CHOICES[key])) {
-          dropdown.addOption(option, option);
-        }
-        decorateDropdown(dropdown.selectEl);
-        dropdown
-          .setValue(String(this.state.extraOptions[key] ?? defaultValue))
-          .onChange((value) => {
-            this.state.extraOptions[key] = value;
-            this.updatePreview();
-          });
-      });
-      return;
-    }
-
-    if (typeof defaultValue === "number" || typeof defaultValue === "string") {
-      setting.addText((text) => text
-        .setPlaceholder(String(defaultValue))
-        .setValue(String(this.state.extraOptions[key] ?? ""))
-        .onChange((value) => {
-          this.state.extraOptions[key] = coerceLikeDefault(value.trim(), defaultValue);
-          this.updatePreview();
-        }));
-      return;
-    }
-
-    setting.addTextArea((textarea) => textarea
-      .setPlaceholder(stringifyYaml(defaultValue).trimEnd())
-      .setValue(this.state.extraOptionText[key] ?? stringifyYaml(defaultValue).trimEnd())
-      .onChange((value) => {
-        this.state.extraOptionText[key] = value;
-        this.updatePreview();
-      }));
-  }
-
-  private createInitialState(definition: TradingViewWidgetDefinition): WizardState {
-    const settings = definition.defaultSettings;
-    const extraOptions: Record<string, unknown> = {};
-    const extraOptionText: Record<string, string> = {};
-    for (const key of getExtraOptionKeys(definition)) {
-      const value = settings[key];
-      if (isSimpleOptionValue(value)) extraOptions[key] = value;
-      else extraOptionText[key] = stringifyYaml(value).trimEnd();
-    }
-
-    return {
-      widget: definition.id,
-      symbol: typeof settings.symbol === "string" ? settings.symbol : "NASDAQ:AAPL",
-      symbolsText: defaultSymbolsText(settings.symbols),
-      interval: typeof settings.interval === "string" ? settings.interval : "D",
-      theme: "auto",
-      height: String(definition.defaultHeight || this.plugin.settings.defaultHeight),
-      width: "100%",
-      locale: typeof settings.locale === "string" ? settings.locale : this.plugin.settings.defaultLocale,
-      timezone: typeof settings.timezone === "string" ? settings.timezone : this.plugin.settings.defaultTimezone,
-      showAttribution: this.plugin.settings.showAttribution,
-      lazyLoad: this.plugin.settings.lazyLoadWidgets,
-      extraOptions,
-      extraOptionText,
-      advancedYaml: "",
-    };
   }
 
   private currentDefinition(): TradingViewWidgetDefinition {
@@ -353,73 +215,11 @@ export class TradingViewWizardModal extends Modal {
   }
 
   private buildCodeBlock(): string {
-    const definition = this.currentDefinition();
-    const data: Record<string, unknown> = {
-      widget: definition.id,
-      theme: this.state.theme,
-      height: numericOrString(this.state.height),
-    };
-
-    if (this.state.width && this.state.width !== "100%") data.width = numericOrString(this.state.width);
-
-    if (this.state.locale) data.locale = this.state.locale;
-    if (this.state.showAttribution !== this.plugin.settings.showAttribution) data.showAttribution = this.state.showAttribution;
-    if (this.state.lazyLoad !== this.plugin.settings.lazyLoadWidgets) data.lazyLoad = this.state.lazyLoad;
-    if (hasSetting(definition, "symbol") && this.state.symbol) data.symbol = this.state.symbol;
-    if (hasSetting(definition, "symbols")) data.symbols = parseSymbolsText(this.state.symbolsText, definition.id);
-    if (hasSetting(definition, "interval") && this.state.interval) data.interval = this.state.interval;
-    if (hasSetting(definition, "timezone") && this.state.timezone) data.timezone = this.state.timezone;
-
-    Object.assign(data, this.getChangedExtraOptions(definition));
-    Object.assign(data, this.parseAdvancedYaml());
-
-    const yaml = stringifyYaml(data).trimEnd();
-    return `\`\`\`tradingview\n${yaml}\n\`\`\``;
+    return buildTradingViewCodeBlock(this.state, this.currentDefinition(), this.plugin.settings);
   }
 
-  private getChangedExtraOptions(definition: TradingViewWidgetDefinition): Record<string, unknown> {
-    const changed: Record<string, unknown> = {};
-    for (const key of getExtraOptionKeys(definition)) {
-      const defaultValue = definition.defaultSettings[key];
-      let value: unknown;
-
-      if (isSimpleOptionValue(defaultValue)) {
-        value = this.state.extraOptions[key];
-      } else {
-        value = parseYamlValue(this.state.extraOptionText[key]);
-      }
-
-      if (!isSameValue(value, defaultValue)) changed[key] = value;
-    }
-    return changed;
-  }
-
-  private parseAdvancedYaml(): Record<string, unknown> {
-    const trimmed = this.state.advancedYaml.trim();
-    if (!trimmed) return {};
-    try {
-      const parsed = parseYaml(trimmed);
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed as Record<string, unknown>;
-      return {};
-    } catch {
-      return {};
-    }
-  }
-
-  private updatePreview(): void {
-    if (!this.previewEl) return;
-    this.previewEl.value = this.buildCodeBlock();
-    this.previewEl.toggleClass("has-yaml-error", this.hasAdvancedYamlError());
-  }
-
-  private hasAdvancedYamlError(): boolean {
-    if (!this.state.advancedYaml.trim()) return false;
-    try {
-      parseYaml(this.state.advancedYaml);
-      return false;
-    } catch {
-      return true;
-    }
+  private handleStateChanged(): void {
+    this.contentEl.toggleClass("has-yaml-error", hasAdvancedYamlError(this.state.advancedYaml));
   }
 
   private async copyCodeBlock(): Promise<void> {
@@ -441,170 +241,4 @@ export class TradingViewWizardModal extends Modal {
     new Notice("TradingView widget code block inserted");
     this.close();
   }
-}
-
-function decorateDropdown(selectEl: HTMLSelectElement): void {
-  const controlEl = selectEl.parentElement;
-  if (!controlEl || controlEl.querySelector(".tradingview-widget-wizard-dropdown-chevron")) return;
-
-  controlEl.addClass("tradingview-widget-wizard-dropdown-control");
-  controlEl.createSpan({ cls: "tradingview-widget-wizard-dropdown-chevron", text: "▾" });
-}
-
-function hasSetting(definition: TradingViewWidgetDefinition, key: string): boolean {
-  return Object.prototype.hasOwnProperty.call(definition.defaultSettings, key);
-}
-
-function createStaticWizardSection(containerEl: HTMLElement, title: string, description: string): HTMLElement {
-  const section = containerEl.createDiv({ cls: "tradingview-widget-wizard-section tradingview-widget-wizard-section-static" });
-  const header = section.createDiv({ cls: "tradingview-widget-wizard-section-summary tradingview-widget-wizard-section-summary-static" });
-  const titleWrap = header.createSpan({ cls: "tradingview-widget-wizard-section-title-wrap" });
-  titleWrap.createEl("span", { cls: "tradingview-widget-wizard-section-title", text: title });
-  titleWrap.createEl("span", { cls: "tradingview-widget-wizard-section-static-badge", text: "Always shown" });
-  header.createEl("span", { cls: "tradingview-widget-wizard-section-desc", text: description });
-
-  return section.createDiv({ cls: "tradingview-widget-wizard-section-body" });
-}
-
-function createWizardSection(containerEl: HTMLElement, title: string, description: string, open = true): HTMLElement {
-  const section = containerEl.createEl("details", { cls: "tradingview-widget-wizard-section tradingview-widget-wizard-section-collapsible" });
-  if (open) section.setAttr("open", "true");
-
-  const summary = section.createEl("summary", { cls: "tradingview-widget-wizard-section-summary" });
-  const titleWrap = summary.createSpan({ cls: "tradingview-widget-wizard-section-title-wrap" });
-  titleWrap.createSpan({ cls: "tradingview-widget-wizard-section-chevron", text: "▸" });
-  titleWrap.createEl("span", { cls: "tradingview-widget-wizard-section-title", text: title });
-  summary.createEl("span", { cls: "tradingview-widget-wizard-section-desc", text: description });
-
-  return section.createDiv({ cls: "tradingview-widget-wizard-section-body" });
-}
-
-function getOptionSection(key: string): "appearance" | "behavior" | "advanced" {
-  const behaviorKeys = new Set([
-    "allow_symbol_change",
-    "calendar",
-    "hide_side_toolbar",
-    "hide_top_toolbar",
-    "hide_legend",
-    "save_image",
-    "showToolbar",
-    "showIntervalTabs",
-    "hideDateRanges",
-    "hideMarketStatus",
-    "noTimeScale",
-    "hasTopBar",
-    "isDataSetEnabled",
-    "isZoomEnabled",
-    "hasSymbolTooltip",
-  ]);
-
-  const appearanceKeys = new Set([
-    "style",
-    "chartType",
-    "isTransparent",
-    "displayMode",
-    "showSymbolLogo",
-    "hideSymbolLogo",
-    "changeMode",
-    "scalePosition",
-    "scaleMode",
-    "valuesTracking",
-    "blockColor",
-    "blockSize",
-    "grouping",
-    "dataSource",
-    "market",
-    "defaultColumn",
-    "defaultScreen",
-    "feedMode",
-    "importanceFilter",
-  ]);
-
-  if (behaviorKeys.has(key)) return "behavior";
-  if (appearanceKeys.has(key)) return "appearance";
-  return "advanced";
-}
-
-function getExtraOptionKeys(definition: TradingViewWidgetDefinition): string[] {
-  return Object.keys(definition.defaultSettings).filter((key) => !BASIC_SETTING_KEYS.has(key));
-}
-
-function isSimpleOptionValue(value: unknown): value is string | number | boolean {
-  return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
-}
-
-function coerceLikeDefault(value: string, defaultValue: string | number): string | number {
-  if (typeof defaultValue !== "number") return value;
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : defaultValue;
-}
-
-function parseYamlValue(value: string | undefined): unknown {
-  if (value == null || !value.trim()) return null;
-  try {
-    return parseYaml(value);
-  } catch {
-    return value;
-  }
-}
-
-function isSameValue(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
-}
-
-function ensureChoice(value: string, choices: string[]): string[] {
-  return choices.includes(value) ? choices : [value, ...choices];
-}
-
-function humanizeOptionName(key: string): string {
-  return key
-    .replace(/_/g, " ")
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function humanizeWidgetName(id: string): string {
-  return id.split("-").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
-}
-
-function numericOrString(value: string): string | number {
-  const trimmed = value.trim();
-  const numeric = Number(trimmed);
-  return Number.isFinite(numeric) && trimmed !== "" ? numeric : trimmed;
-}
-
-function defaultSymbolsText(value: unknown): string {
-  if (!Array.isArray(value)) return "NASDAQ:AAPL | Apple\nNASDAQ:MSFT | Microsoft\nNASDAQ:NVDA | Nvidia";
-  return value.map((item) => {
-    if (Array.isArray(item)) return `${String(item[1] ?? item[0] ?? "").split("|")[0]} | ${String(item[0] ?? "")}`;
-    if (item && typeof item === "object" && "proName" in item) {
-      const record = item as { proName?: unknown; title?: unknown };
-      return `${String(record.proName ?? "")} | ${String(record.title ?? "")}`;
-    }
-    return String(item ?? "");
-  }).filter(Boolean).join("\n");
-}
-
-function parseSymbolsText(value: string, widgetId: string): unknown[] {
-  const lines = value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  const fallback = ["NASDAQ:AAPL | Apple", "NASDAQ:MSFT | Microsoft", "NASDAQ:NVDA | Nvidia"];
-  const source = lines.length ? lines : fallback;
-
-  if (widgetId === "symbol-overview") {
-    return source.map((line) => {
-      const [symbolPart, titlePart] = splitSymbolLine(line);
-      const title = titlePart || symbolPart;
-      return [title, `${symbolPart}|1D`];
-    });
-  }
-
-  return source.map((line) => {
-    const [symbolPart, titlePart] = splitSymbolLine(line);
-    return { proName: symbolPart, title: titlePart || symbolPart };
-  });
-}
-
-function splitSymbolLine(line: string): [string, string] {
-  const [symbolRaw, titleRaw] = line.split("|");
-  return [(symbolRaw ?? "").trim(), (titleRaw ?? "").trim()];
 }
