@@ -326,8 +326,13 @@
 }
 
 .tradingview-symbol-lookup-result:hover,
-.tradingview-symbol-lookup-result:focus {
+.tradingview-symbol-lookup-result:focus,
+.tradingview-symbol-lookup-result.is-selected {
   background: var(--background-modifier-hover);
+}
+
+.tradingview-symbol-lookup-result.is-selected {
+  box-shadow: inset 3px 0 0 var(--interactive-accent);
 }
 
 .tradingview-symbol-lookup-result-primary {

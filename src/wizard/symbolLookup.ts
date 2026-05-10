@@ -41,6 +41,9 @@ export class SymbolLookupForm {
   private statusEl: HTMLElement;
   private debounceTimer: number | null = null;
   private requestId = 0;
+  private results: TradingViewSymbolResult[] = [];
+  private resultButtons: HTMLButtonElement[] = [];
+  private selectedIndex = -1;
 
   constructor(
     private readonly app: App,
@@ -52,20 +55,18 @@ export class SymbolLookupForm {
       cls: "tradingview-symbol-lookup-input",
       attr: {
         type: "search",
+        role: "combobox",
+        "aria-autocomplete": "list",
+        "aria-expanded": "true",
         placeholder: options.placeholder ?? "Search symbol or company, e.g. MSFT, Tesla, BTCUSD",
       },
     });
     this.inputEl.value = options.initialQuery ?? "";
     this.inputEl.addEventListener("input", () => this.scheduleSearch());
-    this.inputEl.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        void this.searchNow();
-      }
-    });
+    this.inputEl.addEventListener("keydown", (event) => this.handleInputKeydown(event));
 
     this.statusEl = this.containerEl.createDiv({ cls: "tradingview-symbol-lookup-status", text: "Type at least 2 characters to search." });
-    this.resultsEl = this.containerEl.createDiv({ cls: "tradingview-symbol-lookup-results" });
+    this.resultsEl = this.containerEl.createDiv({ cls: "tradingview-symbol-lookup-results", attr: { role: "listbox" } });
 
     if (this.inputEl.value.trim().length >= 2) {
       void this.searchNow();
@@ -115,10 +116,16 @@ export class SymbolLookupForm {
   }
 
   private renderResults(results: TradingViewSymbolResult[]): void {
+    this.results = results;
+    this.resultButtons = [];
+    this.selectedIndex = results.length ? 0 : -1;
     this.resultsEl.empty();
 
-    for (const result of results) {
-      const item = this.resultsEl.createEl("button", { cls: "tradingview-symbol-lookup-result" });
+    results.forEach((result, index) => {
+      const item = this.resultsEl.createEl("button", {
+        cls: "tradingview-symbol-lookup-result",
+        attr: { type: "button", role: "option", id: `tradingview-symbol-lookup-result-${index}` },
+      });
       this.renderLogo(item, result);
       const details = item.createDiv({ cls: "tradingview-symbol-lookup-result-details" });
       const primary = details.createDiv({ cls: "tradingview-symbol-lookup-result-primary" });
@@ -126,8 +133,66 @@ export class SymbolLookupForm {
       primary.createSpan({ cls: "tradingview-symbol-lookup-result-type", text: result.type || "symbol" });
       details.createDiv({ cls: "tradingview-symbol-lookup-result-desc", text: result.description || result.symbol });
       details.createDiv({ cls: "tradingview-symbol-lookup-result-meta", text: [result.exchange, result.country].filter(Boolean).join(" · ") });
-      item.addEventListener("click", () => this.onChoose(result));
+      item.addEventListener("mouseenter", () => this.setSelectedIndex(index, false));
+      item.addEventListener("click", () => this.chooseResult(index));
+      this.resultButtons.push(item);
+    });
+
+    this.syncSelectedResult();
+  }
+
+  private handleInputKeydown(event: KeyboardEvent): void {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      this.moveSelection(1);
+      return;
     }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      this.moveSelection(-1);
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (this.selectedIndex >= 0) {
+        this.chooseResult(this.selectedIndex);
+      } else {
+        void this.searchNow();
+      }
+    }
+  }
+
+  private moveSelection(delta: number): void {
+    if (this.results.length === 0) return;
+    const nextIndex = this.selectedIndex < 0
+      ? (delta > 0 ? 0 : this.results.length - 1)
+      : (this.selectedIndex + delta + this.results.length) % this.results.length;
+    this.setSelectedIndex(nextIndex, true);
+  }
+
+  private setSelectedIndex(index: number, scrollIntoView: boolean): void {
+    if (index < 0 || index >= this.results.length) return;
+    this.selectedIndex = index;
+    this.syncSelectedResult(scrollIntoView);
+  }
+
+  private syncSelectedResult(scrollIntoView = false): void {
+    this.resultButtons.forEach((button, index) => {
+      const isSelected = index === this.selectedIndex;
+      button.toggleClass("is-selected", isSelected);
+      button.setAttribute("aria-selected", String(isSelected));
+      if (isSelected) this.inputEl.setAttribute("aria-activedescendant", button.id);
+      if (isSelected && scrollIntoView) button.scrollIntoView({ block: "nearest" });
+    });
+    if (this.selectedIndex < 0) this.inputEl.removeAttribute("aria-activedescendant");
+  }
+
+  private chooseResult(index: number): void {
+    const result = this.results[index];
+    if (!result) return;
+    this.onChoose(result);
   }
 
   private renderLogo(parent: HTMLElement, result: TradingViewSymbolResult): void {
