@@ -20,6 +20,7 @@ export default class TradingViewWidgetsPlugin extends Plugin {
   settings: TradingViewPluginSettings = { ...DEFAULT_SETTINGS };
   private renderedBlocks = new Set<HTMLElement>();
   private themeObserver: MutationObserver | null = null;
+  private observedTheme: "light" | "dark" = "light";
 
   async onload() {
     await this.loadSettings();
@@ -121,7 +122,12 @@ export default class TradingViewWidgetsPlugin extends Plugin {
 
   private startThemeObserver(): void {
     this.themeObserver?.disconnect();
+    this.observedTheme = this.getObsidianTheme();
     this.themeObserver = new MutationObserver(() => {
+      const nextTheme = this.getObsidianTheme();
+      if (nextTheme === this.observedTheme) return;
+
+      this.observedTheme = nextTheme;
       if (this.settings.rerenderOnThemeChange) this.rerenderAllBlocks();
     });
     this.themeObserver.observe(document.body, { attributes: true, attributeFilter: ["class"] });
