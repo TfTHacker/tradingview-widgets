@@ -7,6 +7,13 @@ export interface TradingViewSymbolResult {
   exchange: string;
   type: string;
   country: string;
+  logoUrls: string[];
+}
+
+interface TradingViewSymbolLogoMetadata {
+  style?: unknown;
+  logoid?: unknown;
+  logoid2?: unknown;
 }
 
 interface TradingViewSymbolSearchResponseItem {
@@ -16,6 +23,11 @@ interface TradingViewSymbolSearchResponseItem {
   source_id?: unknown;
   type?: unknown;
   country?: unknown;
+  logoid?: unknown;
+  logo?: TradingViewSymbolLogoMetadata;
+  source_logoid?: unknown;
+  "currency-logoid"?: unknown;
+  "base-currency-logoid"?: unknown;
 }
 
 export class SymbolLookupModal extends Modal {
@@ -101,14 +113,38 @@ export class SymbolLookupModal extends Modal {
 
     for (const result of results) {
       const item = this.resultsEl.createEl("button", { cls: "tradingview-symbol-lookup-result" });
-      const primary = item.createDiv({ cls: "tradingview-symbol-lookup-result-primary" });
+      this.renderLogo(item, result);
+      const details = item.createDiv({ cls: "tradingview-symbol-lookup-result-details" });
+      const primary = details.createDiv({ cls: "tradingview-symbol-lookup-result-primary" });
       primary.createSpan({ cls: "tradingview-symbol-lookup-result-symbol", text: result.fullName });
       primary.createSpan({ cls: "tradingview-symbol-lookup-result-type", text: result.type || "symbol" });
-      item.createDiv({ cls: "tradingview-symbol-lookup-result-desc", text: result.description || result.symbol });
-      item.createDiv({ cls: "tradingview-symbol-lookup-result-meta", text: [result.exchange, result.country].filter(Boolean).join(" · ") });
+      details.createDiv({ cls: "tradingview-symbol-lookup-result-desc", text: result.description || result.symbol });
+      details.createDiv({ cls: "tradingview-symbol-lookup-result-meta", text: [result.exchange, result.country].filter(Boolean).join(" · ") });
       item.addEventListener("click", () => {
         this.onChoose(result);
         this.close();
+      });
+    }
+  }
+
+  private renderLogo(parent: HTMLElement, result: TradingViewSymbolResult): void {
+    const logoWrap = parent.createDiv({ cls: "tradingview-symbol-lookup-logo-wrap" });
+    if (result.logoUrls.length === 0) {
+      logoWrap.createDiv({ cls: "tradingview-symbol-lookup-logo-fallback", text: getSymbolInitials(result.symbol) });
+      return;
+    }
+
+    logoWrap.toggleClass("is-pair", result.logoUrls.length > 1);
+    for (const url of result.logoUrls.slice(0, 2)) {
+      const image = logoWrap.createEl("img", {
+        cls: "tradingview-symbol-lookup-logo",
+        attr: { src: url, alt: "", loading: "lazy" },
+      });
+      image.addEventListener("error", () => {
+        image.remove();
+        if (!logoWrap.querySelector(".tradingview-symbol-lookup-logo, .tradingview-symbol-lookup-logo-fallback")) {
+          logoWrap.createDiv({ cls: "tradingview-symbol-lookup-logo-fallback", text: getSymbolInitials(result.symbol) });
+        }
       });
     }
   }
@@ -152,6 +188,8 @@ function normalizeTradingViewSymbol(item: TradingViewSymbolSearchResponseItem): 
   const exchange = String(item.exchange ?? item.source_id ?? "").trim();
   if (!symbol || !exchange) return null;
 
+  const logoUrls = getLogoUrls(item);
+
   return {
     symbol,
     fullName: `${exchange}:${symbol}`,
@@ -159,7 +197,35 @@ function normalizeTradingViewSymbol(item: TradingViewSymbolSearchResponseItem): 
     exchange,
     type: String(item.type ?? "").trim(),
     country: String(item.country ?? "").trim(),
+    logoUrls,
   };
+}
+
+function getLogoUrls(item: TradingViewSymbolSearchResponseItem): string[] {
+  const logo = item.logo;
+  const logoIds = new Set<string>();
+  if (logo && String(logo.style ?? "") === "pair") {
+    addLogoId(logoIds, logo.logoid);
+    addLogoId(logoIds, logo.logoid2);
+  } else {
+    addLogoId(logoIds, logo?.logoid);
+    addLogoId(logoIds, item.logoid);
+    addLogoId(logoIds, item["base-currency-logoid"]);
+  }
+
+  return Array.from(logoIds).slice(0, 2).map((logoId) => `https://s3-symbol-logo.tradingview.com/${logoId}.svg`);
+}
+
+function addLogoId(logoIds: Set<string>, value: unknown): void {
+  if (typeof value !== "string") return;
+  const logoId = value.trim();
+  if (!logoId || logoId.includes("..") || logoId.startsWith("/") || !/^[A-Za-z0-9/_-]+$/.test(logoId)) return;
+  logoIds.add(logoId);
+}
+
+function getSymbolInitials(symbol: string): string {
+  const clean = symbol.replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase();
+  return clean || "?";
 }
 
 function stripHtml(value: string): string {

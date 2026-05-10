@@ -302,14 +302,17 @@
 }
 
 .tradingview-symbol-lookup-result {
+  align-items: center;
   background: var(--background-primary);
   border: 0;
   border-bottom: 1px solid var(--background-modifier-border);
   border-radius: 0;
   color: var(--text-normal);
   cursor: pointer;
-  display: block;
+  display: flex;
+  gap: 12px;
   height: auto;
+  justify-content: flex-start;
   line-height: 1.35;
   min-height: 0;
   padding: 10px 12px;
@@ -330,7 +333,63 @@
 .tradingview-symbol-lookup-result-primary {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.tradingview-symbol-lookup-logo-wrap {
+  align-items: center;
+  display: flex;
+  flex: 0 0 34px;
+  height: 34px;
+  justify-content: center;
+  position: relative;
+  width: 34px;
+}
+
+.tradingview-symbol-lookup-logo {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 50%;
+  height: 30px;
+  object-fit: contain;
+  width: 30px;
+}
+
+.tradingview-symbol-lookup-logo-wrap.is-pair .tradingview-symbol-lookup-logo {
+  height: 24px;
+  position: absolute;
+  width: 24px;
+}
+
+.tradingview-symbol-lookup-logo-wrap.is-pair .tradingview-symbol-lookup-logo:first-child {
+  left: 1px;
+  top: 1px;
+  z-index: 2;
+}
+
+.tradingview-symbol-lookup-logo-wrap.is-pair .tradingview-symbol-lookup-logo:nth-child(2) {
+  bottom: 1px;
+  right: 1px;
+  z-index: 1;
+}
+
+.tradingview-symbol-lookup-logo-fallback {
+  align-items: center;
+  background: var(--background-modifier-border);
+  border-radius: 50%;
+  color: var(--text-muted);
+  display: flex;
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-semibold);
+  height: 30px;
+  justify-content: center;
+  letter-spacing: -0.02em;
+  width: 30px;
+}
+
+.tradingview-symbol-lookup-result-details {
+  min-width: 0;
 }
 
 .tradingview-symbol-lookup-result-symbol {
