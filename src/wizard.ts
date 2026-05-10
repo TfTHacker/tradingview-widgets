@@ -104,8 +104,13 @@ export class TradingViewWizardModal extends Modal {
 
   private renderForm(containerEl: HTMLElement): void {
     const definition = this.currentDefinition();
+    const basicSection = createWizardSection(containerEl, "Basic setup", "Choose the widget and primary TradingView symbol settings.");
+    const sizeSection = createWizardSection(containerEl, "Size & theme", "Control the widget dimensions and visual theme.");
+    const behaviorSection = createWizardSection(containerEl, "Behavior", "Common runtime behavior options.", false);
+    const appearanceSection = createWizardSection(containerEl, "Appearance", "Widget-specific visual display options.", false);
+    const advancedSection = createWizardSection(containerEl, "Advanced", "Locale, timezone, raw YAML, and lower-level TradingView settings.", false);
 
-    new Setting(containerEl)
+    new Setting(basicSection)
       .setName("Widget type")
       .setDesc("Choose the TradingView widget to embed.")
       .addDropdown((dropdown) => {
@@ -126,7 +131,7 @@ export class TradingViewWizardModal extends Modal {
       });
 
     if (hasSetting(definition, "symbol")) {
-      new Setting(containerEl)
+      new Setting(basicSection)
         .setName("Symbol")
         .setDesc("TradingView symbol, e.g. NASDAQ:AAPL, NASDAQ:NVDA, FX:EURUSD, BITSTAMP:BTCUSD.")
         .addText((text) => text
@@ -139,7 +144,7 @@ export class TradingViewWizardModal extends Modal {
     }
 
     if (hasSetting(definition, "symbols")) {
-      new Setting(containerEl)
+      new Setting(basicSection)
         .setName("Symbols")
         .setDesc("One per line. Use SYMBOL or SYMBOL | Title. Example: NASDAQ:AAPL | Apple")
         .addTextArea((textarea) => textarea
@@ -152,7 +157,7 @@ export class TradingViewWizardModal extends Modal {
     }
 
     if (hasSetting(definition, "interval")) {
-      new Setting(containerEl)
+      new Setting(basicSection)
         .setName("Interval")
         .setDesc("Chart interval. D = daily, W = weekly, M = monthly.")
         .addDropdown((dropdown) => {
@@ -166,7 +171,7 @@ export class TradingViewWizardModal extends Modal {
         });
     }
 
-    new Setting(containerEl)
+    new Setting(sizeSection)
       .setName("Theme")
       .setDesc("auto follows Obsidian's current light/dark theme.")
       .addDropdown((dropdown) => {
@@ -179,7 +184,7 @@ export class TradingViewWizardModal extends Modal {
           });
       });
 
-    new Setting(containerEl)
+    new Setting(sizeSection)
       .setName("Height (px)")
       .setDesc("Widget height in pixels. This is written as the block's height option.")
       .addText((text) => text
@@ -190,7 +195,7 @@ export class TradingViewWizardModal extends Modal {
           this.updatePreview();
         }));
 
-    new Setting(containerEl)
+    new Setting(sizeSection)
       .setName("Width")
       .setDesc("Widget width. Use 100% for full note width, or values like 600px, 80%, 50vw, 40rem.")
       .addText((text) => text
@@ -201,7 +206,17 @@ export class TradingViewWizardModal extends Modal {
           this.updatePreview();
         }));
 
-    new Setting(containerEl)
+    new Setting(behaviorSection)
+      .setName("Lazy load widget")
+      .setDesc("Load this widget only when it approaches the viewport.")
+      .addToggle((toggle) => toggle
+        .setValue(this.state.lazyLoad)
+        .onChange((value) => {
+          this.state.lazyLoad = value;
+          this.updatePreview();
+        }));
+
+    new Setting(advancedSection)
       .setName("Locale")
       .setDesc("TradingView locale, e.g. en, es, de_DE.")
       .addText((text) => text
@@ -213,7 +228,7 @@ export class TradingViewWizardModal extends Modal {
         }));
 
     if (hasSetting(definition, "timezone")) {
-      new Setting(containerEl)
+      new Setting(advancedSection)
         .setName("Timezone")
         .setDesc("Used by chart widgets.")
         .addText((text) => text
@@ -225,7 +240,7 @@ export class TradingViewWizardModal extends Modal {
           }));
     }
 
-    new Setting(containerEl)
+    new Setting(advancedSection)
       .setName("Show TradingView attribution")
       .setDesc("Adds the standard TradingView attribution line below the widget.")
       .addToggle((toggle) => toggle
@@ -235,19 +250,9 @@ export class TradingViewWizardModal extends Modal {
           this.updatePreview();
         }));
 
-    new Setting(containerEl)
-      .setName("Lazy load widget")
-      .setDesc("Load this widget only when it approaches the viewport.")
-      .addToggle((toggle) => toggle
-        .setValue(this.state.lazyLoad)
-        .onChange((value) => {
-          this.state.lazyLoad = value;
-          this.updatePreview();
-        }));
+    this.renderExtraOptionFields({ behaviorSection, appearanceSection, advancedSection }, definition);
 
-    this.renderExtraOptionFields(containerEl, definition);
-
-    new Setting(containerEl)
+    new Setting(advancedSection)
       .setName("Advanced YAML options")
       .setDesc("Optional TradingView settings merged into the code block. Use this for widget-specific options not exposed above.")
       .addTextArea((textarea) => textarea
@@ -259,63 +264,70 @@ export class TradingViewWizardModal extends Modal {
         }));
   }
 
-  private renderExtraOptionFields(containerEl: HTMLElement, definition: TradingViewWidgetDefinition): void {
+  private renderExtraOptionFields(sections: { behaviorSection: HTMLElement; appearanceSection: HTMLElement; advancedSection: HTMLElement }, definition: TradingViewWidgetDefinition): void {
     const keys = getExtraOptionKeys(definition);
     if (!keys.length) return;
 
-    containerEl.createEl("h3", { text: "Widget-specific options" });
+    const appearanceKeys = keys.filter((key) => getOptionSection(key) === "appearance");
+    const behaviorKeys = keys.filter((key) => getOptionSection(key) === "behavior");
+    const advancedKeys = keys.filter((key) => getOptionSection(key) === "advanced");
 
-    for (const key of keys) {
-      const defaultValue = definition.defaultSettings[key];
-      const label = humanizeOptionName(key);
-      const setting = new Setting(containerEl)
-        .setName(label)
-        .setDesc(`TradingView option: ${key}`);
+    for (const key of appearanceKeys) this.renderExtraOptionField(sections.appearanceSection, definition, key);
 
-      if (typeof defaultValue === "boolean") {
-        setting.addToggle((toggle) => toggle
-          .setValue(Boolean(this.state.extraOptions[key]))
+    for (const key of behaviorKeys) this.renderExtraOptionField(sections.behaviorSection, definition, key);
+    for (const key of advancedKeys) this.renderExtraOptionField(sections.advancedSection, definition, key);
+  }
+
+  private renderExtraOptionField(containerEl: HTMLElement, definition: TradingViewWidgetDefinition, key: string): void {
+    const defaultValue = definition.defaultSettings[key];
+    const label = humanizeOptionName(key);
+    const setting = new Setting(containerEl)
+      .setName(label)
+      .setDesc(`TradingView option: ${key}`);
+
+    if (typeof defaultValue === "boolean") {
+      setting.addToggle((toggle) => toggle
+        .setValue(Boolean(this.state.extraOptions[key]))
+        .onChange((value) => {
+          this.state.extraOptions[key] = value;
+          this.updatePreview();
+        }));
+      return;
+    }
+
+    if (typeof defaultValue === "string" && OPTION_CHOICES[key]) {
+      setting.addDropdown((dropdown) => {
+        for (const option of ensureChoice(String(this.state.extraOptions[key] ?? defaultValue), OPTION_CHOICES[key])) {
+          dropdown.addOption(option, option);
+        }
+        dropdown
+          .setValue(String(this.state.extraOptions[key] ?? defaultValue))
           .onChange((value) => {
             this.state.extraOptions[key] = value;
             this.updatePreview();
-          }));
-        continue;
-      }
+          });
+      });
+      return;
+    }
 
-      if (typeof defaultValue === "string" && OPTION_CHOICES[key]) {
-        setting.addDropdown((dropdown) => {
-          for (const option of ensureChoice(String(this.state.extraOptions[key] ?? defaultValue), OPTION_CHOICES[key])) {
-            dropdown.addOption(option, option);
-          }
-          dropdown
-            .setValue(String(this.state.extraOptions[key] ?? defaultValue))
-            .onChange((value) => {
-              this.state.extraOptions[key] = value;
-              this.updatePreview();
-            });
-        });
-        continue;
-      }
-
-      if (typeof defaultValue === "number" || typeof defaultValue === "string") {
-        setting.addText((text) => text
-          .setPlaceholder(String(defaultValue))
-          .setValue(String(this.state.extraOptions[key] ?? ""))
-          .onChange((value) => {
-            this.state.extraOptions[key] = coerceLikeDefault(value.trim(), defaultValue);
-            this.updatePreview();
-          }));
-        continue;
-      }
-
-      setting.addTextArea((textarea) => textarea
-        .setPlaceholder(stringifyYaml(defaultValue).trimEnd())
-        .setValue(this.state.extraOptionText[key] ?? stringifyYaml(defaultValue).trimEnd())
+    if (typeof defaultValue === "number" || typeof defaultValue === "string") {
+      setting.addText((text) => text
+        .setPlaceholder(String(defaultValue))
+        .setValue(String(this.state.extraOptions[key] ?? ""))
         .onChange((value) => {
-          this.state.extraOptionText[key] = value;
+          this.state.extraOptions[key] = coerceLikeDefault(value.trim(), defaultValue);
           this.updatePreview();
         }));
+      return;
     }
+
+    setting.addTextArea((textarea) => textarea
+      .setPlaceholder(stringifyYaml(defaultValue).trimEnd())
+      .setValue(this.state.extraOptionText[key] ?? stringifyYaml(defaultValue).trimEnd())
+      .onChange((value) => {
+        this.state.extraOptionText[key] = value;
+        this.updatePreview();
+      }));
   }
 
   private createInitialState(definition: TradingViewWidgetDefinition): WizardState {
@@ -443,6 +455,63 @@ export class TradingViewWizardModal extends Modal {
 
 function hasSetting(definition: TradingViewWidgetDefinition, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(definition.defaultSettings, key);
+}
+
+function createWizardSection(containerEl: HTMLElement, title: string, description: string, open = true): HTMLElement {
+  const section = containerEl.createEl("details", { cls: "tradingview-widget-wizard-section" });
+  if (open) section.setAttr("open", "true");
+
+  const summary = section.createEl("summary", { cls: "tradingview-widget-wizard-section-summary" });
+  summary.createEl("span", { cls: "tradingview-widget-wizard-section-title", text: title });
+  summary.createEl("span", { cls: "tradingview-widget-wizard-section-desc", text: description });
+
+  return section.createDiv({ cls: "tradingview-widget-wizard-section-body" });
+}
+
+function getOptionSection(key: string): "appearance" | "behavior" | "advanced" {
+  const behaviorKeys = new Set([
+    "allow_symbol_change",
+    "calendar",
+    "hide_side_toolbar",
+    "hide_top_toolbar",
+    "hide_legend",
+    "save_image",
+    "showToolbar",
+    "showIntervalTabs",
+    "hideDateRanges",
+    "hideMarketStatus",
+    "noTimeScale",
+    "hasTopBar",
+    "isDataSetEnabled",
+    "isZoomEnabled",
+    "hasSymbolTooltip",
+  ]);
+
+  const appearanceKeys = new Set([
+    "style",
+    "chartType",
+    "isTransparent",
+    "displayMode",
+    "showSymbolLogo",
+    "hideSymbolLogo",
+    "changeMode",
+    "scalePosition",
+    "scaleMode",
+    "valuesTracking",
+    "blockColor",
+    "blockSize",
+    "grouping",
+    "dataSource",
+    "market",
+    "defaultColumn",
+    "defaultScreen",
+    "feedMode",
+    "importanceFilter",
+  ]);
+
+  if (behaviorKeys.has(key)) return "behavior";
+  if (appearanceKeys.has(key)) return "appearance";
+  return "advanced";
 }
 
 function getExtraOptionKeys(definition: TradingViewWidgetDefinition): string[] {
