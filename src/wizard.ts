@@ -75,22 +75,25 @@ export class TradingViewWizardModal extends Modal {
       text: "Build a safe ```tradingview``` code block, then insert it into the active note.",
     });
 
-    this.formEl = contentEl.createDiv({ cls: "tradingview-widget-wizard-form" });
+    const layout = contentEl.createDiv({ cls: "tradingview-widget-wizard-layout" });
+
+    this.formEl = layout.createDiv({ cls: "tradingview-widget-wizard-form" });
     this.renderForm(this.formEl);
 
-    const previewWrap = contentEl.createDiv({ cls: "tradingview-widget-wizard-preview" });
+    const sidePanel = layout.createDiv({ cls: "tradingview-widget-wizard-side-panel" });
+    const previewWrap = sidePanel.createDiv({ cls: "tradingview-widget-wizard-preview" });
     previewWrap.createEl("h3", { text: "Generated code block" });
     this.previewEl = previewWrap.createEl("textarea", {
       cls: "tradingview-widget-wizard-code",
       attr: { readonly: "true", rows: "14", spellcheck: "false" },
     }) as HTMLTextAreaElement;
 
-    const actions = contentEl.createDiv({ cls: "tradingview-widget-wizard-actions" });
-    actions.createEl("button", { text: "Copy", cls: "mod-cta" }, (button) => {
-      button.addEventListener("click", () => this.copyCodeBlock());
-    });
+    const actions = sidePanel.createDiv({ cls: "tradingview-widget-wizard-actions" });
     actions.createEl("button", { text: "Insert into note", cls: "mod-cta" }, (button) => {
       button.addEventListener("click", () => this.insertCodeBlock());
+    });
+    actions.createEl("button", { text: "Copy", cls: "mod-cta" }, (button) => {
+      button.addEventListener("click", () => this.copyCodeBlock());
     });
     actions.createEl("button", { text: "Close" }, (button) => {
       button.addEventListener("click", () => this.close());
