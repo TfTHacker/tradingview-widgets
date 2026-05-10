@@ -97,7 +97,7 @@ export default class TradingViewWidgetsPlugin extends Plugin {
         link.setAttr("target", "_blank");
       }
 
-      const placeholder = outer.createDiv({ cls: "tradingview-widget-obsidian-placeholder", text: this.settings.lazyLoadWidgets ? "TradingView widget will load when visible…" : "Loading TradingView widget…" });
+      const placeholder = outer.createDiv({ cls: "tradingview-widget-obsidian-placeholder", text: parsed.lazyLoad ? "TradingView widget will load when visible…" : "Loading TradingView widget…" });
 
       const script = document.createElement("script");
       script.type = "text/javascript";
@@ -108,14 +108,14 @@ export default class TradingViewWidgetsPlugin extends Plugin {
         placeholder.detach();
         this.renderError(el, `TradingView widget script failed to load: ${parsed.definition.script}`);
       };
-      this.scheduleWidgetLoad(el, outer, script, placeholder);
+      this.scheduleWidgetLoad(el, outer, script, placeholder, parsed.lazyLoad);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.renderError(el, `${message}\n\nSupported widgets: ${supportedWidgetNames()}`);
     }
   }
 
-  private scheduleWidgetLoad(el: HTMLElement, outer: HTMLElement, script: HTMLScriptElement, placeholder: HTMLElement): void {
+  private scheduleWidgetLoad(el: HTMLElement, outer: HTMLElement, script: HTMLScriptElement, placeholder: HTMLElement, lazyLoad: boolean): void {
     const load = () => {
       this.disconnectLazyLoadObserver(el);
       if (!el.isConnected || script.isConnected) return;
@@ -125,7 +125,7 @@ export default class TradingViewWidgetsPlugin extends Plugin {
       outer.appendChild(script);
     };
 
-    if (!this.settings.lazyLoadWidgets || !("IntersectionObserver" in window)) {
+    if (!lazyLoad || !("IntersectionObserver" in window)) {
       load();
       return;
     }

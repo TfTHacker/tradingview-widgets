@@ -7,6 +7,7 @@ export interface ParsedTradingViewBlock {
   height: number;
   width: string;
   showAttribution: boolean;
+  lazyLoad: boolean;
 }
 
 export interface TradingViewDefaults {
@@ -15,9 +16,10 @@ export interface TradingViewDefaults {
   defaultLocale: string;
   defaultTimezone: string;
   showAttribution: boolean;
+  lazyLoadWidgets: boolean;
 }
 
-const RESERVED_KEYS = new Set(["widget", "type", "height", "width", "theme", "showAttribution", "show_attribution"]);
+const RESERVED_KEYS = new Set(["widget", "type", "height", "width", "theme", "showAttribution", "show_attribution", "lazyLoad", "lazy_load"]);
 
 export function parseTradingViewBlock(source: string, defaults: TradingViewDefaults, currentTheme: "light" | "dark"): ParsedTradingViewBlock {
   const raw = parseSource(source);
@@ -31,6 +33,7 @@ export function parseTradingViewBlock(source: string, defaults: TradingViewDefau
   const height = normalizeHeight(raw.height, definition.defaultHeight || defaults.defaultHeight);
   const width = normalizeWidth(raw.width);
   const showAttribution = normalizeBoolean(raw.showAttribution ?? raw.show_attribution, defaults.showAttribution);
+  const lazyLoad = normalizeBoolean(raw.lazyLoad ?? raw.lazy_load, defaults.lazyLoadWidgets);
 
   const settings: Record<string, unknown> = {
     ...definition.defaultSettings,
@@ -48,7 +51,7 @@ export function parseTradingViewBlock(source: string, defaults: TradingViewDefau
   applyTheme(settings, raw.theme, currentTheme);
   applyDimensions(settings, width, height);
 
-  return { definition, settings, height, width, showAttribution };
+  return { definition, settings, height, width, showAttribution, lazyLoad };
 }
 
 function parseSource(source: string): Record<string, unknown> {

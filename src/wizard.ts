@@ -13,6 +13,7 @@ interface WizardState {
   locale: string;
   timezone: string;
   showAttribution: boolean;
+  lazyLoad: boolean;
   advancedYaml: string;
 }
 
@@ -88,7 +89,7 @@ export class TradingViewWizardModal extends Modal {
           .setValue(this.state.widget)
           .onChange((value) => {
             const next = getWidgetDefinition(value) ?? WIDGETS[0];
-            this.state = { ...this.createInitialState(next), theme: this.state.theme, locale: this.state.locale };
+            this.state = { ...this.createInitialState(next), theme: this.state.theme, locale: this.state.locale, lazyLoad: this.state.lazyLoad };
             this.render();
           });
       });
@@ -193,6 +194,16 @@ export class TradingViewWizardModal extends Modal {
         }));
 
     new Setting(containerEl)
+      .setName("Lazy load widget")
+      .setDesc("Load this widget only when it approaches the viewport.")
+      .addToggle((toggle) => toggle
+        .setValue(this.state.lazyLoad)
+        .onChange((value) => {
+          this.state.lazyLoad = value;
+          this.updatePreview();
+        }));
+
+    new Setting(containerEl)
       .setName("Advanced YAML options")
       .setDesc("Optional TradingView settings merged into the code block. Use this for widget-specific options not exposed above.")
       .addTextArea((textarea) => textarea
@@ -216,6 +227,7 @@ export class TradingViewWizardModal extends Modal {
       locale: typeof settings.locale === "string" ? settings.locale : this.plugin.settings.defaultLocale,
       timezone: typeof settings.timezone === "string" ? settings.timezone : this.plugin.settings.defaultTimezone,
       showAttribution: this.plugin.settings.showAttribution,
+      lazyLoad: this.plugin.settings.lazyLoadWidgets,
       advancedYaml: "",
     };
   }
@@ -234,6 +246,7 @@ export class TradingViewWizardModal extends Modal {
 
     if (this.state.locale) data.locale = this.state.locale;
     if (this.state.showAttribution !== this.plugin.settings.showAttribution) data.showAttribution = this.state.showAttribution;
+    if (this.state.lazyLoad !== this.plugin.settings.lazyLoadWidgets) data.lazyLoad = this.state.lazyLoad;
     if (hasSetting(definition, "symbol") && this.state.symbol) data.symbol = this.state.symbol;
     if (hasSetting(definition, "symbols")) data.symbols = parseSymbolsText(this.state.symbolsText, definition.id);
     if (hasSetting(definition, "interval") && this.state.interval) data.interval = this.state.interval;
