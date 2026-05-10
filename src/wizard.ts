@@ -10,6 +10,7 @@ interface WizardState {
   interval: string;
   theme: string;
   height: string;
+  width: string;
   locale: string;
   timezone: string;
   showAttribution: boolean;
@@ -113,6 +114,7 @@ export class TradingViewWizardModal extends Modal {
             this.state = {
               ...this.createInitialState(next),
               theme: this.state.theme,
+              width: this.state.width,
               locale: this.state.locale,
               lazyLoad: this.state.lazyLoad,
             };
@@ -182,6 +184,17 @@ export class TradingViewWizardModal extends Modal {
         .setValue(this.state.height)
         .onChange((value) => {
           this.state.height = value.trim();
+          this.updatePreview();
+        }));
+
+    new Setting(containerEl)
+      .setName("Width")
+      .setDesc("Widget width. Use 100% for full note width, or values like 600px, 80%, 50vw, 40rem.")
+      .addText((text) => text
+        .setPlaceholder("100%")
+        .setValue(this.state.width)
+        .onChange((value) => {
+          this.state.width = value.trim();
           this.updatePreview();
         }));
 
@@ -319,6 +332,7 @@ export class TradingViewWizardModal extends Modal {
       interval: typeof settings.interval === "string" ? settings.interval : "D",
       theme: "auto",
       height: String(definition.defaultHeight || this.plugin.settings.defaultHeight),
+      width: "100%",
       locale: typeof settings.locale === "string" ? settings.locale : this.plugin.settings.defaultLocale,
       timezone: typeof settings.timezone === "string" ? settings.timezone : this.plugin.settings.defaultTimezone,
       showAttribution: this.plugin.settings.showAttribution,
@@ -340,6 +354,8 @@ export class TradingViewWizardModal extends Modal {
       theme: this.state.theme,
       height: numericOrString(this.state.height),
     };
+
+    if (this.state.width && this.state.width !== "100%") data.width = numericOrString(this.state.width);
 
     if (this.state.locale) data.locale = this.state.locale;
     if (this.state.showAttribution !== this.plugin.settings.showAttribution) data.showAttribution = this.state.showAttribution;

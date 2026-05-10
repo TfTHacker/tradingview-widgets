@@ -36,7 +36,7 @@ autosize: true
 
 ## Wizard
 
-Use the command palette command **TradingView Widgets: Widget Wizard** to open a guided widget builder. It lets you choose the widget type, symbol(s), interval, theme, height, locale, timezone, attribution, lazy loading, widget-specific TradingView options, and optional advanced YAML, then copies or inserts the generated code block.
+Use the command palette command **TradingView Widgets: Widget Wizard** to open a guided widget builder. It lets you choose the widget type, symbol(s), interval, theme, height, width, locale, timezone, attribution, lazy loading, widget-specific TradingView options, and optional advanced YAML, then copies or inserts the generated code block.
 
 ## Notes
 
