@@ -70,10 +70,6 @@ export class TradingViewWizardModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.createEl("h2", { text: "TradingView Widget Wizard" });
-    contentEl.createEl("p", {
-      cls: "tradingview-widget-wizard-desc",
-      text: "Build a safe ```tradingview``` code block, then insert it into the active note.",
-    });
 
     this.formEl = contentEl.createDiv({ cls: "tradingview-widget-wizard-form" });
     this.renderForm(this.formEl);
@@ -94,8 +90,8 @@ export class TradingViewWizardModal extends Modal {
 
   private renderForm(containerEl: HTMLElement): void {
     const definition = this.currentDefinition();
-    const basicSection = createWizardSection(containerEl, "Basic setup", "Choose the widget and primary TradingView symbol settings.");
-    const sizeSection = createWizardSection(containerEl, "Size & theme", "Control the widget dimensions and visual theme.");
+    const basicSection = createStaticWizardSection(containerEl, "Basic setup", "Choose the widget and primary TradingView symbol settings.");
+    const sizeSection = createStaticWizardSection(containerEl, "Size & theme", "Control the widget dimensions and visual theme.");
     const behaviorSection = createWizardSection(containerEl, "Behavior", "Common runtime behavior options.", false);
     const appearanceSection = createWizardSection(containerEl, "Appearance", "Widget-specific visual display options.", false);
     const advancedSection = createWizardSection(containerEl, "Advanced", "Locale, timezone, raw YAML, and lower-level TradingView settings.", false);
@@ -445,6 +441,15 @@ export class TradingViewWizardModal extends Modal {
 
 function hasSetting(definition: TradingViewWidgetDefinition, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(definition.defaultSettings, key);
+}
+
+function createStaticWizardSection(containerEl: HTMLElement, title: string, description: string): HTMLElement {
+  const section = containerEl.createDiv({ cls: "tradingview-widget-wizard-section tradingview-widget-wizard-section-static" });
+  const header = section.createDiv({ cls: "tradingview-widget-wizard-section-summary" });
+  header.createEl("span", { cls: "tradingview-widget-wizard-section-title", text: title });
+  header.createEl("span", { cls: "tradingview-widget-wizard-section-desc", text: description });
+
+  return section.createDiv({ cls: "tradingview-widget-wizard-section-body" });
 }
 
 function createWizardSection(containerEl: HTMLElement, title: string, description: string, open = true): HTMLElement {

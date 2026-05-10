@@ -80,17 +80,21 @@
   background: var(--background-primary);
 }
 
-.tradingview-widget-wizard-section[open] {
+.tradingview-widget-wizard-section[open],
+.tradingview-widget-wizard-section-static {
   background: var(--background-primary-alt);
 }
 
 .tradingview-widget-wizard-section-summary {
-  cursor: pointer;
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: 10px 12px;
   user-select: none;
+}
+
+details.tradingview-widget-wizard-section > .tradingview-widget-wizard-section-summary {
+  cursor: pointer;
 }
 
 .tradingview-widget-wizard-section-title {
