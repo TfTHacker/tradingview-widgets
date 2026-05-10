@@ -1,5 +1,6 @@
 export interface TradingViewWidgetDefinition {
   id: string;
+  displayName: string;
   aliases: string[];
   script: string;
   defaultHeight: number;
@@ -11,6 +12,7 @@ const EXTERNAL_EMBED_BASE = "https://s3.tradingview.com/external-embedding";
 export const WIDGETS: TradingViewWidgetDefinition[] = [
   {
     id: "advanced-chart",
+    displayName: "Advanced Chart",
     aliases: ["advanced", "chart"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-advanced-chart.js`,
     defaultHeight: 600,
@@ -31,6 +33,7 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "symbol-overview",
+    displayName: "Symbol Overview",
     aliases: ["overview", "symbol"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-symbol-overview.js`,
     defaultHeight: 420,
@@ -56,6 +59,7 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "mini-symbol-overview",
+    displayName: "Mini Chart",
     aliases: ["mini-chart", "mini"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-mini-symbol-overview.js`,
     defaultHeight: 220,
@@ -71,7 +75,8 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "ticker-tape",
-    aliases: ["tape"],
+    displayName: "Ticker Tape",
+    aliases: ["tape", "ticker-tag", "ticker-tags"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-ticker-tape.js`,
     defaultHeight: 80,
     defaultSettings: {
@@ -89,13 +94,33 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "ticker",
-    aliases: ["single-ticker"],
+    displayName: "Single Ticker",
+    aliases: ["single-ticker", "single-quote", "quote"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-single-quote.js`,
     defaultHeight: 120,
     defaultSettings: { symbol: "NASDAQ:AAPL", locale: "en", isTransparent: false },
   },
   {
+    id: "tickers",
+    displayName: "Ticker",
+    aliases: ["ticker-widget", "ticker-list", "multiple-tickers"],
+    script: `${EXTERNAL_EMBED_BASE}/embed-widget-tickers.js`,
+    defaultHeight: 120,
+    defaultSettings: {
+      symbols: [
+        { proName: "FOREXCOM:SPXUSD", title: "S&P 500" },
+        { proName: "FOREXCOM:NSXUSD", title: "US 100" },
+        { proName: "FX_IDC:EURUSD", title: "EUR/USD" },
+        { proName: "BITSTAMP:BTCUSD", title: "Bitcoin" },
+      ],
+      showSymbolLogo: false,
+      locale: "en",
+      isTransparent: false,
+    },
+  },
+  {
     id: "market-overview",
+    displayName: "Market Overview",
     aliases: ["markets-overview"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-market-overview.js`,
     defaultHeight: 500,
@@ -103,6 +128,7 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "market-data",
+    displayName: "Market Data",
     aliases: ["market-quotes"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-market-quotes.js`,
     defaultHeight: 500,
@@ -110,6 +136,7 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "stock-heatmap",
+    displayName: "Stock Heatmap",
     aliases: ["heatmap", "stocks-heatmap"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-stock-heatmap.js`,
     defaultHeight: 500,
@@ -117,6 +144,7 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "forex-heatmap",
+    displayName: "Forex Heatmap",
     aliases: ["fx-heatmap"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-forex-heat-map.js`,
     defaultHeight: 500,
@@ -124,6 +152,7 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "crypto-coins-heatmap",
+    displayName: "Crypto Coins Heatmap",
     aliases: ["crypto-heatmap"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-crypto-coins-heatmap.js`,
     defaultHeight: 500,
@@ -131,6 +160,7 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "screener",
+    displayName: "Screener",
     aliases: ["stock-screener"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-screener.js`,
     defaultHeight: 550,
@@ -138,6 +168,7 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "technical-analysis",
+    displayName: "Technical Analysis",
     aliases: ["ta"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-technical-analysis.js`,
     defaultHeight: 450,
@@ -145,6 +176,7 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "symbol-info",
+    displayName: "Symbol Info",
     aliases: ["info"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-symbol-info.js`,
     defaultHeight: 240,
@@ -152,13 +184,23 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "company-profile",
+    displayName: "Company Profile",
     aliases: ["profile"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-symbol-profile.js`,
     defaultHeight: 420,
     defaultSettings: { symbol: "NASDAQ:AAPL", locale: "en", colorTheme: "light", isTransparent: false },
   },
   {
+    id: "fundamental-data",
+    displayName: "Fundamental Data",
+    aliases: ["financials", "fundamentals", "financial-data"],
+    script: `${EXTERNAL_EMBED_BASE}/embed-widget-financials.js`,
+    defaultHeight: 830,
+    defaultSettings: { symbol: "NASDAQ:AAPL", locale: "en", colorTheme: "light", isTransparent: false, displayMode: "regular", largeChartUrl: "", autosize: false },
+  },
+  {
     id: "top-stories",
+    displayName: "Top Stories",
     aliases: ["news"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-timeline.js`,
     defaultHeight: 500,
@@ -166,6 +208,7 @@ export const WIDGETS: TradingViewWidgetDefinition[] = [
   },
   {
     id: "economic-calendar",
+    displayName: "Economic Calendar",
     aliases: ["calendar"],
     script: `${EXTERNAL_EMBED_BASE}/embed-widget-events.js`,
     defaultHeight: 550,

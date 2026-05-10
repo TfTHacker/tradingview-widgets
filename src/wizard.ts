@@ -105,7 +105,7 @@ export class TradingViewWizardModal extends Modal {
       .setName("Widget type")
       .setDesc("Choose the TradingView widget to embed.")
       .addDropdown((dropdown) => {
-        for (const widget of WIDGETS) dropdown.addOption(widget.id, humanizeWidgetName(widget.id));
+        for (const widget of WIDGETS) dropdown.addOption(widget.id, widget.displayName);
         dropdown
           .setValue(this.state.widget)
           .onChange((value) => {

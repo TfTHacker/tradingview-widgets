@@ -19,7 +19,8 @@ autosize: true
 - `symbol-overview`
 - `mini-symbol-overview`
 - `ticker-tape`
-- `ticker`
+- `ticker` — Single Ticker
+- `tickers` — Ticker
 - `market-overview`
 - `market-data`
 - `stock-heatmap`
@@ -29,6 +30,7 @@ autosize: true
 - `technical-analysis`
 - `symbol-info`
 - `company-profile`
+- `fundamental-data`
 - `top-stories`
 - `economic-calendar`
 
