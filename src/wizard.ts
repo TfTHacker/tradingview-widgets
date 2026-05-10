@@ -457,19 +457,23 @@ function hasSetting(definition: TradingViewWidgetDefinition, key: string): boole
 
 function createStaticWizardSection(containerEl: HTMLElement, title: string, description: string): HTMLElement {
   const section = containerEl.createDiv({ cls: "tradingview-widget-wizard-section tradingview-widget-wizard-section-static" });
-  const header = section.createDiv({ cls: "tradingview-widget-wizard-section-summary" });
-  header.createEl("span", { cls: "tradingview-widget-wizard-section-title", text: title });
+  const header = section.createDiv({ cls: "tradingview-widget-wizard-section-summary tradingview-widget-wizard-section-summary-static" });
+  const titleWrap = header.createSpan({ cls: "tradingview-widget-wizard-section-title-wrap" });
+  titleWrap.createEl("span", { cls: "tradingview-widget-wizard-section-title", text: title });
+  titleWrap.createEl("span", { cls: "tradingview-widget-wizard-section-static-badge", text: "Always shown" });
   header.createEl("span", { cls: "tradingview-widget-wizard-section-desc", text: description });
 
   return section.createDiv({ cls: "tradingview-widget-wizard-section-body" });
 }
 
 function createWizardSection(containerEl: HTMLElement, title: string, description: string, open = true): HTMLElement {
-  const section = containerEl.createEl("details", { cls: "tradingview-widget-wizard-section" });
+  const section = containerEl.createEl("details", { cls: "tradingview-widget-wizard-section tradingview-widget-wizard-section-collapsible" });
   if (open) section.setAttr("open", "true");
 
   const summary = section.createEl("summary", { cls: "tradingview-widget-wizard-section-summary" });
-  summary.createEl("span", { cls: "tradingview-widget-wizard-section-title", text: title });
+  const titleWrap = summary.createSpan({ cls: "tradingview-widget-wizard-section-title-wrap" });
+  titleWrap.createSpan({ cls: "tradingview-widget-wizard-section-chevron", text: "▸" });
+  titleWrap.createEl("span", { cls: "tradingview-widget-wizard-section-title", text: title });
   summary.createEl("span", { cls: "tradingview-widget-wizard-section-desc", text: description });
 
   return section.createDiv({ cls: "tradingview-widget-wizard-section-body" });

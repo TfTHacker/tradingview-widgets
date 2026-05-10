@@ -128,26 +128,89 @@
   background: var(--background-primary);
 }
 
-.tradingview-widget-wizard-section[open],
-.tradingview-widget-wizard-section-static {
+.tradingview-widget-wizard-section-collapsible[open] {
   background: var(--background-primary-alt);
+}
+
+.tradingview-widget-wizard-section-static {
+  background: linear-gradient(90deg, var(--background-primary-alt), var(--background-primary));
+  border-color: var(--background-modifier-border-hover);
+  box-shadow: inset 3px 0 0 var(--interactive-accent);
 }
 
 .tradingview-widget-wizard-section-summary {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   padding: 10px 12px;
   user-select: none;
 }
 
-details.tradingview-widget-wizard-section > .tradingview-widget-wizard-section-summary {
+.tradingview-widget-wizard-section-collapsible > .tradingview-widget-wizard-section-summary {
   cursor: pointer;
+  list-style: none;
+}
+
+.tradingview-widget-wizard-section-collapsible > .tradingview-widget-wizard-section-summary::-webkit-details-marker {
+  display: none;
+}
+
+.tradingview-widget-wizard-section-collapsible > .tradingview-widget-wizard-section-summary::marker {
+  content: "";
+}
+
+.tradingview-widget-wizard-section-collapsible > .tradingview-widget-wizard-section-summary:hover {
+  background: var(--background-modifier-hover);
+}
+
+.tradingview-widget-wizard-section-summary-static {
+  cursor: default;
+}
+
+.tradingview-widget-wizard-section-title-wrap {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
 }
 
 .tradingview-widget-wizard-section-title {
   color: var(--text-normal);
   font-weight: var(--font-semibold);
+}
+
+.tradingview-widget-wizard-section-chevron {
+  align-items: center;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border-hover);
+  border-radius: 999px;
+  color: var(--text-normal);
+  display: inline-flex;
+  flex: 0 0 20px;
+  font-size: 14px;
+  font-weight: 800;
+  height: 20px;
+  justify-content: center;
+  line-height: 1;
+  transition: transform 120ms ease, background-color 120ms ease, color 120ms ease;
+  width: 20px;
+}
+
+.tradingview-widget-wizard-section-collapsible[open] .tradingview-widget-wizard-section-chevron {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  transform: rotate(90deg);
+}
+
+.tradingview-widget-wizard-section-static-badge {
+  background: var(--background-modifier-border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+  font-size: var(--font-ui-smaller);
+  font-weight: var(--font-medium);
+  padding: 2px 8px;
 }
 
 .tradingview-widget-wizard-section-desc {
