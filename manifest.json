@@ -1,0 +1,10 @@
+{
+  "id": "tradingview-widgets",
+  "name": "TradingView Widgets",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Render TradingView financial widgets from safe Markdown code blocks.",
+  "author": "TfTHacker",
+  "authorUrl": "https://github.com/TfTHacker",
+  "isDesktopOnly": false
+}
