@@ -14,11 +14,32 @@ interface WizardState {
   timezone: string;
   showAttribution: boolean;
   lazyLoad: boolean;
+  extraOptions: Record<string, unknown>;
+  extraOptionText: Record<string, string>;
   advancedYaml: string;
 }
 
 const INTERVALS = ["1", "5", "15", "30", "60", "240", "D", "W", "M"];
 const THEMES = ["auto", "light", "dark"];
+const BASIC_SETTING_KEYS = new Set(["symbol", "symbols", "interval", "locale", "timezone", "theme", "colorTheme", "width", "height"]);
+const OPTION_CHOICES: Record<string, string[]> = {
+  blockColor: ["change", "Perf.W", "Perf.1M", "Perf.3M", "Perf.6M", "Perf.YTD", "Perf.Y", "24h_close_change|5"],
+  blockSize: ["market_cap_basic", "market_cap_calc", "volume", "Value.Traded", "AUM"],
+  changeMode: ["price-and-percent", "price-only", "percent-only"],
+  chartType: ["area", "line", "candlesticks", "bars"],
+  dataSource: ["SPX500", "AllUSEtf", "Crypto"],
+  dateRange: ["1D", "5D", "1M", "3M", "6M", "12M", "YTD", "60M", "ALL"],
+  defaultColumn: ["overview", "performance", "oscillators", "moving_averages"],
+  defaultScreen: ["general", "most_capitalized", "volume_leaders", "top_gainers", "top_losers"],
+  displayMode: ["regular", "compact", "adaptive", "single", "multiple"],
+  feedMode: ["all_symbols", "market", "symbol"],
+  grouping: ["sector", "industry", "asset_class", "no_group"],
+  importanceFilter: ["-1,0,1", "0,1", "1"],
+  market: ["america", "forex", "crypto", "indices", "futures", "cfd"],
+  scaleMode: ["Normal", "Percentage", "Logarithmic"],
+  scalePosition: ["right", "left", "no"],
+  valuesTracking: ["0", "1"],
+};
 
 export class TradingViewWizardModal extends Modal {
   private plugin: TradingViewWidgetsPlugin;
@@ -89,7 +110,12 @@ export class TradingViewWizardModal extends Modal {
           .setValue(this.state.widget)
           .onChange((value) => {
             const next = getWidgetDefinition(value) ?? WIDGETS[0];
-            this.state = { ...this.createInitialState(next), theme: this.state.theme, locale: this.state.locale, lazyLoad: this.state.lazyLoad };
+            this.state = {
+              ...this.createInitialState(next),
+              theme: this.state.theme,
+              locale: this.state.locale,
+              lazyLoad: this.state.lazyLoad,
+            };
             this.render();
           });
       });
@@ -203,6 +229,8 @@ export class TradingViewWizardModal extends Modal {
           this.updatePreview();
         }));
 
+    this.renderExtraOptionFields(containerEl, definition);
+
     new Setting(containerEl)
       .setName("Advanced YAML options")
       .setDesc("Optional TradingView settings merged into the code block. Use this for widget-specific options not exposed above.")
@@ -215,8 +243,75 @@ export class TradingViewWizardModal extends Modal {
         }));
   }
 
+  private renderExtraOptionFields(containerEl: HTMLElement, definition: TradingViewWidgetDefinition): void {
+    const keys = getExtraOptionKeys(definition);
+    if (!keys.length) return;
+
+    containerEl.createEl("h3", { text: "Widget-specific options" });
+
+    for (const key of keys) {
+      const defaultValue = definition.defaultSettings[key];
+      const label = humanizeOptionName(key);
+      const setting = new Setting(containerEl)
+        .setName(label)
+        .setDesc(`TradingView option: ${key}`);
+
+      if (typeof defaultValue === "boolean") {
+        setting.addToggle((toggle) => toggle
+          .setValue(Boolean(this.state.extraOptions[key]))
+          .onChange((value) => {
+            this.state.extraOptions[key] = value;
+            this.updatePreview();
+          }));
+        continue;
+      }
+
+      if (typeof defaultValue === "string" && OPTION_CHOICES[key]) {
+        setting.addDropdown((dropdown) => {
+          for (const option of ensureChoice(String(this.state.extraOptions[key] ?? defaultValue), OPTION_CHOICES[key])) {
+            dropdown.addOption(option, option);
+          }
+          dropdown
+            .setValue(String(this.state.extraOptions[key] ?? defaultValue))
+            .onChange((value) => {
+              this.state.extraOptions[key] = value;
+              this.updatePreview();
+            });
+        });
+        continue;
+      }
+
+      if (typeof defaultValue === "number" || typeof defaultValue === "string") {
+        setting.addText((text) => text
+          .setPlaceholder(String(defaultValue))
+          .setValue(String(this.state.extraOptions[key] ?? ""))
+          .onChange((value) => {
+            this.state.extraOptions[key] = coerceLikeDefault(value.trim(), defaultValue);
+            this.updatePreview();
+          }));
+        continue;
+      }
+
+      setting.addTextArea((textarea) => textarea
+        .setPlaceholder(stringifyYaml(defaultValue).trimEnd())
+        .setValue(this.state.extraOptionText[key] ?? stringifyYaml(defaultValue).trimEnd())
+        .onChange((value) => {
+          this.state.extraOptionText[key] = value;
+          this.updatePreview();
+        }));
+    }
+  }
+
   private createInitialState(definition: TradingViewWidgetDefinition): WizardState {
     const settings = definition.defaultSettings;
+    const extraOptions: Record<string, unknown> = {};
+    const extraOptionText: Record<string, string> = {};
+    for (const key of getExtraOptionKeys(definition)) {
+      const value = settings[key];
+      if (isSimpleOptionValue(value)) extraOptions[key] = value;
+      else extraOptionText[key] = stringifyYaml(value).trimEnd();
+    }
+
     return {
       widget: definition.id,
       symbol: typeof settings.symbol === "string" ? settings.symbol : "NASDAQ:AAPL",
@@ -228,6 +323,8 @@ export class TradingViewWizardModal extends Modal {
       timezone: typeof settings.timezone === "string" ? settings.timezone : this.plugin.settings.defaultTimezone,
       showAttribution: this.plugin.settings.showAttribution,
       lazyLoad: this.plugin.settings.lazyLoadWidgets,
+      extraOptions,
+      extraOptionText,
       advancedYaml: "",
     };
   }
@@ -252,10 +349,28 @@ export class TradingViewWizardModal extends Modal {
     if (hasSetting(definition, "interval") && this.state.interval) data.interval = this.state.interval;
     if (hasSetting(definition, "timezone") && this.state.timezone) data.timezone = this.state.timezone;
 
+    Object.assign(data, this.getChangedExtraOptions(definition));
     Object.assign(data, this.parseAdvancedYaml());
 
     const yaml = stringifyYaml(data).trimEnd();
     return `\`\`\`tradingview\n${yaml}\n\`\`\``;
+  }
+
+  private getChangedExtraOptions(definition: TradingViewWidgetDefinition): Record<string, unknown> {
+    const changed: Record<string, unknown> = {};
+    for (const key of getExtraOptionKeys(definition)) {
+      const defaultValue = definition.defaultSettings[key];
+      let value: unknown;
+
+      if (isSimpleOptionValue(defaultValue)) {
+        value = this.state.extraOptions[key];
+      } else {
+        value = parseYamlValue(this.state.extraOptionText[key]);
+      }
+
+      if (!isSameValue(value, defaultValue)) changed[key] = value;
+    }
+    return changed;
   }
 
   private parseAdvancedYaml(): Record<string, unknown> {
@@ -309,6 +424,44 @@ export class TradingViewWizardModal extends Modal {
 
 function hasSetting(definition: TradingViewWidgetDefinition, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(definition.defaultSettings, key);
+}
+
+function getExtraOptionKeys(definition: TradingViewWidgetDefinition): string[] {
+  return Object.keys(definition.defaultSettings).filter((key) => !BASIC_SETTING_KEYS.has(key));
+}
+
+function isSimpleOptionValue(value: unknown): value is string | number | boolean {
+  return typeof value === "string" || typeof value === "number" || typeof value === "boolean";
+}
+
+function coerceLikeDefault(value: string, defaultValue: string | number): string | number {
+  if (typeof defaultValue !== "number") return value;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : defaultValue;
+}
+
+function parseYamlValue(value: string | undefined): unknown {
+  if (value == null || !value.trim()) return null;
+  try {
+    return parseYaml(value);
+  } catch {
+    return value;
+  }
+}
+
+function isSameValue(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function ensureChoice(value: string, choices: string[]): string[] {
+  return choices.includes(value) ? choices : [value, ...choices];
+}
+
+function humanizeOptionName(key: string): string {
+  return key
+    .replace(/_/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function humanizeWidgetName(id: string): string {
