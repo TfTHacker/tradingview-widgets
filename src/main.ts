@@ -1,6 +1,7 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { parseTradingViewBlock, type TradingViewDefaults } from "./parser";
 import { supportedWidgetNames } from "./widgets";
+import { TradingViewWizardModal } from "./wizard";
 
 interface TradingViewPluginSettings extends TradingViewDefaults {
   rerenderOnThemeChange: boolean;
@@ -33,6 +34,14 @@ export default class TradingViewWidgetsPlugin extends Plugin {
       callback: () => {
         this.rerenderAllBlocks();
         new Notice("TradingView widgets re-rendered");
+      },
+    });
+
+    this.addCommand({
+      id: "open-tradingview-widget-wizard",
+      name: "Build TradingView widget code block",
+      callback: () => {
+        new TradingViewWizardModal(this.app, this).open();
       },
     });
 
