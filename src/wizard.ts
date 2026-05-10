@@ -149,8 +149,8 @@ export class TradingViewWizardModal extends Modal {
       });
 
     new Setting(containerEl)
-      .setName("Height")
-      .setDesc("Widget height in pixels.")
+      .setName("Height (px)")
+      .setDesc("Widget height in pixels. This is written as the block's height option.")
       .addText((text) => text
         .setPlaceholder(String(definition.defaultHeight))
         .setValue(this.state.height)

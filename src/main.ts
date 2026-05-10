@@ -43,7 +43,7 @@ export default class TradingViewWidgetsPlugin extends Plugin {
 
     this.addCommand({
       id: "open-tradingview-widget-wizard",
-      name: "Build TradingView widget code block",
+      name: "Widget Wizard",
       callback: () => {
         new TradingViewWizardModal(this.app, this).open();
       },
