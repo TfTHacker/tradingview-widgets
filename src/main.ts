@@ -5,6 +5,7 @@ import { TradingViewWizardModal } from "./wizard";
 
 interface TradingViewPluginSettings extends TradingViewDefaults {
   rerenderOnThemeChange: boolean;
+  lazyLoadWidgets: boolean;
 }
 
 const DEFAULT_SETTINGS: TradingViewPluginSettings = {
@@ -14,11 +15,13 @@ const DEFAULT_SETTINGS: TradingViewPluginSettings = {
   defaultTimezone: "Etc/UTC",
   showAttribution: false,
   rerenderOnThemeChange: true,
+  lazyLoadWidgets: true,
 };
 
 export default class TradingViewWidgetsPlugin extends Plugin {
   settings: TradingViewPluginSettings = { ...DEFAULT_SETTINGS };
   private renderedBlocks = new Set<HTMLElement>();
+  private lazyLoadObservers = new Map<HTMLElement, IntersectionObserver>();
   private themeObserver: MutationObserver | null = null;
   private observedTheme: "light" | "dark" = "light";
 
@@ -53,6 +56,8 @@ export default class TradingViewWidgetsPlugin extends Plugin {
   onunload() {
     this.themeObserver?.disconnect();
     this.themeObserver = null;
+    Array.from(this.lazyLoadObservers.values()).forEach((observer) => observer.disconnect());
+    this.lazyLoadObservers.clear();
     this.renderedBlocks.clear();
   }
 
@@ -65,6 +70,7 @@ export default class TradingViewWidgetsPlugin extends Plugin {
   }
 
   private renderTradingViewBlock(source: string, el: HTMLElement): void {
+    this.disconnectLazyLoadObserver(el);
     el.empty();
     el.addClass("tradingview-widget-obsidian");
     this.renderedBlocks.add(el);
@@ -91,8 +97,7 @@ export default class TradingViewWidgetsPlugin extends Plugin {
         link.setAttr("target", "_blank");
       }
 
-      const placeholder = outer.createDiv({ cls: "tradingview-widget-obsidian-placeholder", text: "Loading TradingView widget…" });
-      window.setTimeout(() => placeholder.detach(), 4000);
+      const placeholder = outer.createDiv({ cls: "tradingview-widget-obsidian-placeholder", text: this.settings.lazyLoadWidgets ? "TradingView widget will load when visible…" : "Loading TradingView widget…" });
 
       const script = document.createElement("script");
       script.type = "text/javascript";
@@ -103,11 +108,45 @@ export default class TradingViewWidgetsPlugin extends Plugin {
         placeholder.detach();
         this.renderError(el, `TradingView widget script failed to load: ${parsed.definition.script}`);
       };
-      outer.appendChild(script);
+      this.scheduleWidgetLoad(el, outer, script, placeholder);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.renderError(el, `${message}\n\nSupported widgets: ${supportedWidgetNames()}`);
     }
+  }
+
+  private scheduleWidgetLoad(el: HTMLElement, outer: HTMLElement, script: HTMLScriptElement, placeholder: HTMLElement): void {
+    const load = () => {
+      this.disconnectLazyLoadObserver(el);
+      if (!el.isConnected || script.isConnected) return;
+
+      placeholder.setText("Loading TradingView widget…");
+      window.setTimeout(() => placeholder.detach(), 4000);
+      outer.appendChild(script);
+    };
+
+    if (!this.settings.lazyLoadWidgets || !("IntersectionObserver" in window)) {
+      load();
+      return;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) load();
+    }, {
+      root: null,
+      rootMargin: "400px 0px",
+      threshold: 0.01,
+    });
+
+    this.lazyLoadObservers.set(el, observer);
+    observer.observe(el);
+  }
+
+  private disconnectLazyLoadObserver(el: HTMLElement): void {
+    const observer = this.lazyLoadObservers.get(el);
+    if (!observer) return;
+    observer.disconnect();
+    this.lazyLoadObservers.delete(el);
   }
 
   private renderError(el: HTMLElement, message: string): void {
@@ -220,6 +259,16 @@ class TradingViewSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.rerenderOnThemeChange)
         .onChange(async (value) => {
           this.plugin.settings.rerenderOnThemeChange = value;
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(containerEl)
+      .setName("Lazy load widgets")
+      .setDesc("Load TradingView widgets only when they approach the viewport. Improves note load time and reduces offscreen iframe work.")
+      .addToggle((toggle) => toggle
+        .setValue(this.plugin.settings.lazyLoadWidgets)
+        .onChange(async (value) => {
+          this.plugin.settings.lazyLoadWidgets = value;
           await this.plugin.saveSettings();
         }));
 

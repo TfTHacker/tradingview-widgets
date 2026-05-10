@@ -40,4 +40,5 @@ Use the command palette command **TradingView Widgets: Build TradingView widget 
 
 - The plugin does not execute arbitrary raw script/HTML from notes.
 - Widgets require internet access to TradingView's embed scripts.
+- Widgets lazy-load by default when they approach the viewport to reduce offscreen iframe work.
 - `theme: auto` follows Obsidian's current light/dark theme when the block renders.
