@@ -12,7 +12,7 @@ const DEFAULT_SETTINGS: TradingViewPluginSettings = {
   defaultHeight: 600,
   defaultLocale: "en",
   defaultTimezone: "Etc/UTC",
-  showAttribution: true,
+  showAttribution: false,
   rerenderOnThemeChange: true,
 };
 
@@ -199,7 +199,7 @@ class TradingViewSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Show TradingView attribution")
-      .setDesc("Can be overridden per block with showAttribution: false.")
+      .setDesc("Can be overridden per block with showAttribution: true.")
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.showAttribution)
         .onChange(async (value) => {
