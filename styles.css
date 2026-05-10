@@ -271,3 +271,85 @@
 .is-mobile .tradingview-widget-wizard-actions button {
   flex: 1 1 auto;
 }
+
+.tradingview-symbol-lookup-modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal.tradingview-symbol-lookup-modal,
+.tradingview-symbol-lookup-modal .modal {
+  width: min(92vw, 720px);
+}
+
+.tradingview-symbol-lookup-desc,
+.tradingview-symbol-lookup-status {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  margin: 0;
+}
+
+.tradingview-symbol-lookup-input {
+  width: 100%;
+}
+
+.tradingview-symbol-lookup-results {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m, 8px);
+  max-height: min(56vh, 480px);
+  overflow: auto;
+}
+
+.tradingview-symbol-lookup-result {
+  background: var(--background-primary);
+  border: 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+  border-radius: 0;
+  color: var(--text-normal);
+  cursor: pointer;
+  display: block;
+  height: auto;
+  line-height: 1.35;
+  min-height: 0;
+  padding: 10px 12px;
+  text-align: left;
+  white-space: normal;
+  width: 100%;
+}
+
+.tradingview-symbol-lookup-result:last-child {
+  border-bottom: 0;
+}
+
+.tradingview-symbol-lookup-result:hover,
+.tradingview-symbol-lookup-result:focus {
+  background: var(--background-modifier-hover);
+}
+
+.tradingview-symbol-lookup-result-primary {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.tradingview-symbol-lookup-result-symbol {
+  font-family: var(--font-monospace);
+  font-weight: var(--font-semibold);
+}
+
+.tradingview-symbol-lookup-result-type {
+  background: var(--background-modifier-border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  padding: 1px 7px;
+  text-transform: uppercase;
+}
+
+.tradingview-symbol-lookup-result-desc,
+.tradingview-symbol-lookup-result-meta {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  margin-top: 3px;
+}

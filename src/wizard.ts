@@ -6,6 +6,7 @@ import { INTERVALS, THEMES } from "./wizard/optionMetadata";
 import { renderExtraOptionFields } from "./wizard/optionControls";
 import { createWizardSections } from "./wizard/sections";
 import { createInitialWizardState, type WizardState } from "./wizard/state";
+import { SymbolLookupModal, type TradingViewSymbolResult } from "./wizard/symbolLookup";
 import { decorateDropdown } from "./wizard/uiDecorators";
 
 export class TradingViewWizardModal extends Modal {
@@ -84,7 +85,14 @@ export class TradingViewWizardModal extends Modal {
           .onChange((value) => {
             this.state.symbol = value.trim();
             onChange();
-          }));
+          }))
+        .addButton((button) => button
+          .setButtonText("Lookup")
+          .setTooltip("Search TradingView symbols")
+          .onClick(() => this.openSymbolLookup((result) => {
+            this.state.symbol = result.fullName;
+            this.render();
+          })));
     }
 
     if (hasSetting(definition, "symbols")) {
@@ -97,7 +105,15 @@ export class TradingViewWizardModal extends Modal {
           .onChange((value) => {
             this.state.symbolsText = value;
             onChange();
-          }));
+          }))
+        .addButton((button) => button
+          .setButtonText("Lookup")
+          .setTooltip("Search and append a TradingView symbol")
+          .onClick(() => this.openSymbolLookup((result) => {
+            const line = `${result.fullName} | ${result.description || result.symbol}`;
+            this.state.symbolsText = appendLine(this.state.symbolsText, line);
+            this.render();
+          })));
     }
 
     if (hasSetting(definition, "interval")) {
@@ -218,6 +234,10 @@ export class TradingViewWizardModal extends Modal {
     return buildTradingViewCodeBlock(this.state, this.currentDefinition(), this.plugin.settings);
   }
 
+  private openSymbolLookup(onChoose: (result: TradingViewSymbolResult) => void): void {
+    new SymbolLookupModal(this.app, onChoose).open();
+  }
+
   private handleStateChanged(): void {
     this.contentEl.toggleClass("has-yaml-error", hasAdvancedYamlError(this.state.advancedYaml));
   }
@@ -241,4 +261,9 @@ export class TradingViewWizardModal extends Modal {
     new Notice("TradingView widget code block inserted");
     this.close();
   }
+}
+
+function appendLine(value: string, line: string): string {
+  const trimmed = value.trimEnd();
+  return trimmed ? `${trimmed}\n${line}` : line;
 }
