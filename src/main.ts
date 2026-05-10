@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { parseTradingViewBlock, type TradingViewDefaults } from "./parser";
 import { supportedWidgetNames } from "./widgets";
 import { TradingViewWizardModal } from "./wizard";
@@ -30,15 +30,6 @@ export default class TradingViewWidgetsPlugin extends Plugin {
 
     this.registerMarkdownCodeBlockProcessor("tradingview", (source, el) => {
       this.renderTradingViewBlock(source, el);
-    });
-
-    this.addCommand({
-      id: "rerender-tradingview-widgets",
-      name: "Re-render TradingView widgets",
-      callback: () => {
-        this.rerenderAllBlocks();
-        new Notice("TradingView widgets re-rendered");
-      },
     });
 
     this.addCommand({
