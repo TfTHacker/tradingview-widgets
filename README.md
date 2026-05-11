@@ -2,7 +2,9 @@
 
 TradingView Widgets renders official [TradingView embeddable widgets](https://www.tradingview.com/widget-docs/) from safe Markdown code blocks in Obsidian desktop and mobile.
 
-Use it to add live charts, tickers, market data, heatmaps, screeners, symbol details, news, and calendars to your notes without pasting raw `<script>` or `<iframe>` HTML into your vault.
+Instead of pasting raw `<script>` tags or `<iframe>` embeds into your vault, you write a normal fenced `tradingview` code block. The plugin reads that YAML configuration and creates the official TradingView widget safely at render time.
+
+Use it to add live charts, tickers, market data, heatmaps, screeners, symbol details, news, and calendars to your notes while keeping the note itself readable, portable, and script-free.
 
 ````markdown
 ```tradingview
@@ -14,6 +16,16 @@ height: 600
 autosize: true
 ```
 ````
+
+## Screenshots
+
+Rendered widgets from a demo note:
+
+![Rendered TradingView widgets in Obsidian](assets/screenshots/rendered-dashboard.png)
+
+The same idea as plain Markdown: safe `tradingview` code blocks, not raw scripts or iframes:
+
+![TradingView widget code blocks in Obsidian](assets/screenshots/code-block-source.png)
 
 ## Based on TradingView widgets
 
@@ -127,7 +139,7 @@ Aliases also work for several widgets. Examples: `chart`, `advanced`, `overview`
 ```tradingview
 widget: advanced-chart
 symbol: NASDAQ:NVDA
-interval: 60
+interval: D
 theme: auto
 height: 650
 locale: en
@@ -138,6 +150,8 @@ calendar: true
 allow_symbol_change: true
 ```
 ````
+
+![Rendered Advanced Chart widget](assets/screenshots/examples/advanced-chart.png)
 
 ### Mini chart
 
@@ -151,6 +165,8 @@ height: 220
 isTransparent: true
 ```
 ````
+
+![Rendered Mini Chart widget](assets/screenshots/examples/mini-chart.png)
 
 ### Ticker tape
 
@@ -173,6 +189,8 @@ displayMode: adaptive
 ```
 ````
 
+![Rendered Ticker Tape widget](assets/screenshots/examples/ticker-tape.png)
+
 ### Multiple tickers
 
 ````markdown
@@ -190,6 +208,8 @@ symbols:
 showSymbolLogo: true
 ```
 ````
+
+![Rendered Multiple Tickers widget](assets/screenshots/examples/multiple-tickers.png)
 
 ### Symbol overview
 
@@ -209,6 +229,8 @@ changeMode: price-and-percent
 ```
 ````
 
+![Rendered Symbol Overview widget](assets/screenshots/examples/symbol-overview.png)
+
 ### Stock heatmap
 
 ````markdown
@@ -226,6 +248,8 @@ hasSymbolTooltip: true
 ```
 ````
 
+![Rendered Stock Heatmap widget](assets/screenshots/examples/stock-heatmap.png)
+
 ### Screener
 
 ````markdown
@@ -239,6 +263,8 @@ defaultColumn: overview
 showToolbar: true
 ```
 ````
+
+![Rendered Screener widget](assets/screenshots/examples/screener.png)
 
 ### Technical analysis
 
@@ -254,6 +280,8 @@ displayMode: single
 ```
 ````
 
+![Rendered Technical Analysis widget](assets/screenshots/examples/technical-analysis.png)
+
 ### Economic calendar
 
 ````markdown
@@ -265,6 +293,8 @@ importanceFilter: "0,1"
 locale: en
 ```
 ````
+
+![Rendered Economic Calendar widget](assets/screenshots/examples/economic-calendar.png)
 
 ## Settings
 
@@ -287,6 +317,10 @@ Per-block options override plugin settings.
 - Use the Wizard's advanced YAML section when TradingView documents an option that does not have a dedicated control yet.
 - If a widget shows an error, first verify the `widget` id and YAML indentation.
 - If TradingView changes a widget option, update the YAML block to match the current [TradingView docs](https://www.tradingview.com/widget-docs/widgets/).
+
+## Built with Hermes Agent
+
+This plugin was coded with [Hermes Agent](https://hermes-agent.nousresearch.com/), the author's AI coding agent, through an iterative Obsidian plugin development workflow.
 
 ## Privacy and security
 
