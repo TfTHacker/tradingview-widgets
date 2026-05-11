@@ -10,14 +10,18 @@ import { TradingViewWizardModal } from "./wizard";
 export default class TradingViewWidgetsPlugin extends Plugin {
   settings: TradingViewPluginSettings = { ...DEFAULT_SETTINGS };
   private lazyLoader = new LazyWidgetLoader();
-  private renderer = new TradingViewBlockRenderer(() => this.settings, this.lazyLoader);
+  private renderer = new TradingViewBlockRenderer(
+    () => this.settings,
+    this.lazyLoader,
+    ({ source, editTarget }) => new TradingViewWizardModal(this.app, this, { source, editTarget }).open(),
+  );
   private themeObserver: MutationObserver | null = null;
 
   async onload() {
     await this.loadSettings();
 
-    this.registerMarkdownCodeBlockProcessor("tradingview", (source, el) => {
-      this.renderer.render(source, el);
+    this.registerMarkdownCodeBlockProcessor("tradingview", (source, el, ctx) => {
+      this.renderer.render(source, el, ctx);
     });
 
     this.addCommand({

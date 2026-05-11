@@ -1,23 +1,30 @@
-import { App, MarkdownView, Modal, Notice, Setting } from "obsidian";
+import { App, MarkdownView, Modal, Notice, Setting, TFile } from "obsidian";
 import type TradingViewWidgetsPlugin from "./main";
 import { WIDGETS, getWidgetDefinition, type TradingViewWidgetDefinition } from "./widgets";
 import { buildTradingViewCodeBlock, hasAdvancedYamlError, hasSetting } from "./wizard/codeblockBuilder";
+import type { WizardEditTarget } from "./wizard/editTarget";
 import { INTERVALS, THEMES } from "./wizard/optionMetadata";
 import { renderExtraOptionFields } from "./wizard/optionControls";
 import { createWizardSections } from "./wizard/sections";
-import { createInitialWizardState, type WizardState } from "./wizard/state";
+import { createInitialWizardState, createWizardStateFromSource, type WizardState } from "./wizard/state";
 import { SymbolLookupModal, type TradingViewSymbolResult } from "./wizard/symbolLookup";
 import { decorateDropdown } from "./wizard/uiDecorators";
 
 export class TradingViewWizardModal extends Modal {
   private plugin: TradingViewWidgetsPlugin;
   private state: WizardState;
+  private editTarget: WizardEditTarget | null;
 
-  constructor(app: App, plugin: TradingViewWidgetsPlugin) {
+  constructor(app: App, plugin: TradingViewWidgetsPlugin, options: { source?: string; editTarget?: WizardEditTarget } = {}) {
     super(app);
     this.plugin = plugin;
-    const definition = getWidgetDefinition(plugin.settings.defaultWidget) ?? WIDGETS[0];
-    this.state = createInitialWizardState(definition, plugin.settings);
+    this.editTarget = options.editTarget ?? null;
+    if (options.source) {
+      this.state = createWizardStateFromSource(options.source, plugin.settings);
+    } else {
+      const definition = getWidgetDefinition(plugin.settings.defaultWidget) ?? WIDGETS[0];
+      this.state = createInitialWizardState(definition, plugin.settings);
+    }
   }
 
   onOpen(): void {
@@ -32,14 +39,14 @@ export class TradingViewWizardModal extends Modal {
   private render(): void {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: "TradingView Widget Wizard" });
+    contentEl.createEl("h2", { text: this.editTarget ? "Edit TradingView Widget" : "TradingView Widget Wizard" });
 
     const formEl = contentEl.createDiv({ cls: "tradingview-widget-wizard-form" });
     this.renderForm(formEl);
 
     const actions = contentEl.createDiv({ cls: "tradingview-widget-wizard-actions" });
-    actions.createEl("button", { text: "Insert into note", cls: "mod-cta" }, (button) => {
-      button.addEventListener("click", () => this.insertCodeBlock());
+    actions.createEl("button", { text: this.editTarget ? "Update widget" : "Insert into note", cls: "mod-cta" }, (button) => {
+      button.addEventListener("click", () => void this.saveCodeBlock());
     });
     actions.createEl("button", { text: "Copy", cls: "mod-cta" }, (button) => {
       button.addEventListener("click", () => this.copyCodeBlock());
@@ -248,11 +255,20 @@ export class TradingViewWizardModal extends Modal {
     new Notice("TradingView widget code block copied");
   }
 
-  private insertCodeBlock(): void {
+  private async saveCodeBlock(): Promise<void> {
     const code = this.buildCodeBlock();
+    if (this.editTarget) {
+      const updated = await this.replaceEditedCodeBlock(code);
+      if (updated) {
+        new Notice("TradingView widget updated");
+        this.close();
+      }
+      return;
+    }
+
     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!view) {
-      void navigator.clipboard.writeText(code);
+      await navigator.clipboard.writeText(code);
       new Notice("No active Markdown editor. Code block copied instead.");
       return;
     }
@@ -261,6 +277,49 @@ export class TradingViewWizardModal extends Modal {
     new Notice("TradingView widget code block inserted");
     this.close();
   }
+
+  private async replaceEditedCodeBlock(code: string): Promise<boolean> {
+    if (!this.editTarget) return false;
+    const file = this.app.vault.getAbstractFileByPath(this.editTarget.sourcePath);
+    if (!(file instanceof TFile)) {
+      await navigator.clipboard.writeText(code);
+      new Notice("Could not find the source note. Updated code block copied instead.");
+      return false;
+    }
+
+    const content = await this.app.vault.read(file);
+    const replacedByLine = replaceLineRange(content, this.editTarget.lineStart, this.editTarget.lineEnd, code);
+    if (replacedByLine) {
+      await this.app.vault.modify(file, replacedByLine);
+      return true;
+    }
+
+    const replacedByText = replaceExactSection(content, this.editTarget.sectionText, code);
+    if (replacedByText) {
+      await this.app.vault.modify(file, replacedByText);
+      return true;
+    }
+
+    await navigator.clipboard.writeText(code);
+    new Notice("Could not locate the original widget block. Updated code block copied instead.");
+    return false;
+  }
+}
+
+function replaceLineRange(content: string, lineStart: number, lineEnd: number, code: string): string | null {
+  const lines = content.split("\n");
+  if (lineStart < 0 || lineEnd < lineStart || lineStart >= lines.length) return null;
+  const end = Math.min(lineEnd, lines.length - 1);
+  const section = lines.slice(lineStart, end + 1).join("\n");
+  if (!section.trimStart().startsWith("```tradingview")) return null;
+  lines.splice(lineStart, end - lineStart + 1, code);
+  return lines.join("\n");
+}
+
+function replaceExactSection(content: string, sectionText: string, code: string): string | null {
+  const index = content.indexOf(sectionText);
+  if (index === -1) return null;
+  return `${content.slice(0, index)}${code}${content.slice(index + sectionText.length)}`;
 }
 
 function appendLine(value: string, line: string): string {

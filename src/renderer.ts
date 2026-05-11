@@ -1,22 +1,33 @@
+import type { MarkdownPostProcessorContext } from "obsidian";
 import { parseTradingViewBlock } from "./parser";
 import type { TradingViewPluginSettings } from "./settings";
 import { getObsidianTheme } from "./theme";
 import { supportedWidgetNames } from "./widgets";
 import { LazyWidgetLoader } from "./lazyLoad";
+import type { WizardEditTarget } from "./wizard/editTarget";
+
+export interface TradingViewEditRequest {
+  source: string;
+  editTarget: WizardEditTarget;
+}
 
 export class TradingViewBlockRenderer {
   private renderedBlocks = new Set<HTMLElement>();
+  private contexts = new WeakMap<HTMLElement, MarkdownPostProcessorContext>();
 
   constructor(
     private readonly getSettings: () => TradingViewPluginSettings,
     private readonly lazyLoader: LazyWidgetLoader,
+    private readonly onEdit?: (request: TradingViewEditRequest) => void,
   ) {}
 
-  render(source: string, el: HTMLElement): void {
+  render(source: string, el: HTMLElement, ctx?: MarkdownPostProcessorContext): void {
     this.lazyLoader.disconnect(el);
     el.empty();
     el.addClass("tradingview-widget-obsidian");
     this.renderedBlocks.add(el);
+    if (ctx) this.contexts.set(el, ctx);
+    const renderContext = ctx ?? this.contexts.get(el);
     el.dataset.tradingviewSource = source;
 
     try {
@@ -28,6 +39,7 @@ export class TradingViewBlockRenderer {
       const outer = el.createDiv({ cls: "tradingview-widget-container" });
       outer.style.height = "100%";
       outer.style.width = "100%";
+      this.renderEditButton(source, outer, el, renderContext);
       outer.createDiv({ cls: "tradingview-widget-container__widget" });
 
       if (parsed.showAttribution) renderAttribution(outer);
@@ -66,6 +78,35 @@ export class TradingViewBlockRenderer {
 
   clear(): void {
     this.renderedBlocks.clear();
+  }
+
+  private renderEditButton(source: string, outer: HTMLElement, el: HTMLElement, ctx?: MarkdownPostProcessorContext): void {
+    if (!this.onEdit || !ctx?.sourcePath) return;
+    const button = outer.createEl("button", {
+      cls: "tradingview-widget-edit-button",
+      attr: {
+        type: "button",
+        "aria-label": "Edit TradingView widget",
+        title: "Edit widget settings",
+      },
+    });
+    button.createSpan({ cls: "tradingview-widget-edit-button-icon", text: "⚙" });
+    button.createSpan({ cls: "tradingview-widget-edit-button-text", text: "Edit" });
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const section = ctx.getSectionInfo(el);
+      if (!section) return;
+      this.onEdit?.({
+        source,
+        editTarget: {
+          sourcePath: ctx.sourcePath,
+          lineStart: section.lineStart,
+          lineEnd: section.lineEnd,
+          sectionText: section.text,
+        },
+      });
+    });
   }
 
   private renderError(el: HTMLElement, message: string): void {
