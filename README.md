@@ -318,6 +318,14 @@ Per-block options override plugin settings.
 - If a widget shows an error, first verify the `widget` id and YAML indentation.
 - If TradingView changes a widget option, update the YAML block to match the current [TradingView docs](https://www.tradingview.com/widget-docs/widgets/).
 
+## Persistence limitations
+
+TradingView widgets are remote embeds. Changes you make inside a rendered widget — for example changing the visible symbol, switching intervals, adding indicators, or drawing chart annotations — are handled by TradingView and are not written back to the Markdown code block or plugin settings.
+
+This is a limitation of TradingView's embeddable widgets, not a limitation of this plugin. The plugin can persist the YAML configuration you write in the note, but it cannot persist interactive changes made inside TradingView's iframe.
+
+For chart annotations, use the chart widget's **Save image** action to capture the current chart view with your drawings.
+
 ## Built with Hermes Agent
 
 This plugin was coded with [Hermes Agent](https://hermes-agent.nousresearch.com/), the author's AI coding agent, through an iterative Obsidian plugin development workflow.
