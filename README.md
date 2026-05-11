@@ -1,5 +1,7 @@
 # TradingView Widgets for Obsidian
 
+![Rendered TradingView widgets in Obsidian](assets/screenshots/rendered-dashboard.png)
+
 TradingView Widgets renders official [TradingView embeddable widgets](https://www.tradingview.com/widget-docs/) from safe Markdown code blocks in Obsidian desktop and mobile.
 
 Instead of pasting raw `<script>` tags or `<iframe>` embeds into your vault, you write a normal fenced `tradingview` code block. The plugin reads that YAML configuration and creates the official TradingView widget safely at render time.
@@ -16,16 +18,6 @@ height: 600
 autosize: true
 ```
 ````
-
-## Screenshots
-
-Rendered widgets from a demo note:
-
-![Rendered TradingView widgets in Obsidian](assets/screenshots/rendered-dashboard.png)
-
-The same idea as plain Markdown: safe `tradingview` code blocks, not raw scripts or iframes:
-
-![TradingView widget code blocks in Obsidian](assets/screenshots/code-block-source.png)
 
 ## Based on TradingView widgets
 
